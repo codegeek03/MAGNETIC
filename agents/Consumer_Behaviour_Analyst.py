@@ -51,7 +51,6 @@ class ConsumerBehaviorAgent:
     ],
     reasoning=True,  # Enable reasoning 
     markdown=True,
-    show_tool_calls=True
 )
 
         # Define consumer behavior metrics and their weights

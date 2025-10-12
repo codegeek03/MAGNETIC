@@ -51,7 +51,6 @@ class ProductionCostAgent:
     ],
     reasoning=True,  # Enable reasoning 
     markdown=True,
-    show_tool_calls=True
 )
 
         # Define cost components and their weights

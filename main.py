@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 # LangGraph imports
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.prebuilt import ToolNode
 
 # Agno imports
 from agno.agent import Agent
@@ -24,7 +23,7 @@ from agents.Logistics_Analyst import LogisticCompatibilityAgent
 from agents.Sourcing_Cost_Analyser import ProductionCostAgent
 from agents.Sustainability_Analyst import EnvironmentalImpactAgent
 from agents.Consumer_Behaviour_Analyst import ConsumerBehaviorAgent
-from agents.Orchestrator import OrchestrationAgent
+from agents.orchestrator import OrchestrationAgent
 from agents.context import get_content_json, fetch_url_content
 
 # Constants

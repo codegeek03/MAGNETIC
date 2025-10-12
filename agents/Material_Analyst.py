@@ -51,7 +51,6 @@ class MaterialPropertiesAgent:
     ],
     reasoning=True,  # Enable reasoning 
     markdown=True,
-    show_tool_calls=True
 )
 
         # Define key properties and their weights

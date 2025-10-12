@@ -12,14 +12,14 @@ from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.tools.googlesearch import GoogleSearchTools
 from agno.tools.pubmed import PubmedTools
 import logging
-from agno.tools.thinking import ThinkingTools
+#from agno.tools.thinking import ThinkingTools
 from agno.tools.knowledge import KnowledgeTools
 import os
 from agno.agent import Agent
-from agno.knowledge.url import UrlKnowledge
+# from agno.knowledge.url import UrlKnowledge
 from agno.tools.knowledge import KnowledgeTools
 from agno.vectordb.lancedb import LanceDb, SearchType
-from agno.embedder.google import GeminiEmbedder
+from agno.knowledge.embedder.google import GeminiEmbedder
 
 
 # Constants
@@ -44,25 +44,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-agno_docs = UrlKnowledge(
-    urls=["https://www.researchgate.net/publication/322808541_Sustainable_Packaging","https://sustainablepackaging.org/wp-content/uploads/2019/06/Definition-of-Sustainable-Packaging.pdf",
-          "https://s3.amazonaws.com/gb.assets/SPC+DG_1-8-07_FINAL.pdf","https://sustainablepackaging.org/wp-content/uploads/2019/06/Definition-of-Sustainable-Packaging.pdf"],
+# agno_docs = UrlKnowledge(
+#     urls=["https://www.researchgate.net/publication/322808541_Sustainable_Packaging","https://sustainablepackaging.org/wp-content/uploads/2019/06/Definition-of-Sustainable-Packaging.pdf",
+#           "https://s3.amazonaws.com/gb.assets/SPC+DG_1-8-07_FINAL.pdf","https://sustainablepackaging.org/wp-content/uploads/2019/06/Definition-of-Sustainable-Packaging.pdf"],
 
-    vector_db=LanceDb(
-        uri="tmp/lancedb",
-        table_name="agno_docs",
-        search_type=SearchType.hybrid,
-        embedder=GeminiEmbedder(),
-    ),
-)
+#     vector_db=LanceDb(
+#         uri="tmp/lancedb",
+#         table_name="agno_docs",
+#         search_type=SearchType.hybrid,
+#         embedder=GeminiEmbedder(),
+#     ),
+# )
 
-knowledge_tools = KnowledgeTools(
-    knowledge=agno_docs,
-    think=True,   
-    search=True,  
-    analyze=True,  
-    add_few_shot=True, 
-)
+# knowledge_tools = KnowledgeTools(
+#     knowledge=agno_docs,
+#     think=True,   
+#     search=True,  
+#     analyze=True,  
+#     add_few_shot=True, 
+# )
 
 class OrchestrationAgent:
     def __init__(self, current_time: str = CURRENT_TIME, current_user: str = CURRENT_USER,prop_context: Dict[str, Any] = None):
@@ -88,10 +88,10 @@ class OrchestrationAgent:
         grounding=True,
         temperature=0.4  # Lower temperature for more focused responses
     ),
-    context={
-        "Research_context": get_content_json(urls), 
-        "properties": prop_context
-    },
+    # context={
+    #     "Research_context": get_content_json(urls), 
+    #     "properties": prop_context
+    # },
     description="You are an expert research analyst with exceptional analytical and investigative abilities.",
     instructions=[
         "Always begin by thoroughly searching for the most relevant and up-to-date information",
@@ -103,7 +103,6 @@ class OrchestrationAgent:
     ],
     reasoning=True,
     markdown=True,
-    show_tool_calls=True # Add explicit token limit
 )
             logger.info("Agent initialized successfully")
 

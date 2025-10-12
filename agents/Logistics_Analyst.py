@@ -48,7 +48,6 @@ class LogisticCompatibilityAgent:
     ],
     reasoning=True,  # Enable reasoning 
     markdown=True,
-    show_tool_calls=True
 )
 
     async def analyze_top_logistics_materials(self, materials_data: Dict[str, Any],input_data: Dict[str, Any]) -> Dict[str, Any]:

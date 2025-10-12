@@ -14,14 +14,14 @@ from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.tools.googlesearch import GoogleSearchTools
 from agno.tools.pubmed import PubmedTools
 import logging
-from agno.tools.thinking import ThinkingTools
+#from agno.tools.thinking import ThinkingTools
 from agno.tools.knowledge import KnowledgeTools
 import os
 from agno.agent import Agent
-from agno.knowledge.url import UrlKnowledge
+# from agno.knowledge.url import UrlKnowledge
 from agno.tools.knowledge import KnowledgeTools
 from agno.vectordb.lancedb import LanceDb, SearchType
-from agno.embedder.google import GeminiEmbedder
+from agno.knowledge.embedder.google import GeminiEmbedder
 
 
 # Constants
@@ -124,29 +124,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-agno_docs = UrlKnowledge(
-    urls = [
-    # Existing sources
-    "https://www.researchgate.net/publication/322808541_Sustainable_Packaging",
-    "https://sustainablepackaging.org/wp-content/uploads/2019/06/Definition-of-Sustainable-Packaging.pdf",
-    "https://s3.amazonaws.com/gb.assets/SPC+DG_1-8-07_FINAL.pdf",
-],
+# agno_docs = UrlKnowledge(
+#     urls = [
+#     # Existing sources
+#     "https://www.researchgate.net/publication/322808541_Sustainable_Packaging",
+#     "https://sustainablepackaging.org/wp-content/uploads/2019/06/Definition-of-Sustainable-Packaging.pdf",
+#     "https://s3.amazonaws.com/gb.assets/SPC+DG_1-8-07_FINAL.pdf",
+# ],
 
-    vector_db=LanceDb(
-        uri="tmp/lancedb",
-        table_name="agno_docs",
-        search_type=SearchType.hybrid,
-        embedder=GeminiEmbedder(),
-    ),
-)
+#     vector_db=LanceDb(
+#         uri="tmp/lancedb",
+#         table_name="agno_docs",
+#         search_type=SearchType.hybrid,
+#         embedder=GeminiEmbedder(),
+#     ),
+# )
 
-knowledge_tools = KnowledgeTools(
-    knowledge=agno_docs,
-    think=True,   
-    search=True,  
-    analyze=True,  
-    add_few_shot=True, 
-)
+# knowledge_tools = KnowledgeTools(
+#     knowledge=agno_docs,
+#     think=True,   
+#     search=True,  
+#     analyze=True,  
+#     add_few_shot=True, 
+# )
 
 logger = logging.getLogger(__name__)
 
@@ -177,10 +177,10 @@ class PackagingMaterialsAgent:
         grounding=False,
         temperature=0.6 # Disable grounding to allow tools and reasoning to work
     ),
-    context={"database_context": get_content_json(urls), "potential_packaging_materials":get_waste_materials()},
-    tools=[
-        knowledge_tools
-    ],
+    # context={"database_context": get_content_json(urls), "potential_packaging_materials":get_waste_materials()},
+    # tools=[
+    #     knowledge_tools
+    # ],
     description="You are an expert research analyst with exceptional analytical and investigative abilities.",
     instructions=[
         "ONLY include materials originally intended for packaging — DO NOT include accessories (e.g., labels, preservatives, adhesives, seals, inks).",
@@ -190,7 +190,6 @@ class PackagingMaterialsAgent:
     ],
     reasoning=True,  # Enable reasoning 
     markdown=True,
-    show_tool_calls=True
 )
 
     def get_formatted_timestamp(self) -> str:

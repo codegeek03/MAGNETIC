@@ -778,308 +778,315 @@ async def main():
         submitted = st.form_submit_button("🔍 Analyze Materials")
 
         if submitted:
-                input_data = {
-                    "product_name": product_name,
-                    "units_per_shipment": units,
-                    "dimensions": {"length": length, "width": width, "height": height},
-                    "packaging_location": packaging_location,
-                    "budget_constraint": budget,
-                    "analysis_weights": analysis_weights,
-                    "metadata": {
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "user": "codegeek03",
-                        "volume": volume
-                    }
+            # Define CURRENT_USER and CURRENT_TIME here instead of importing
+            CURRENT_USER = "codegeek03"
+            CURRENT_TIME = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            input_data = {
+                "product_name": product_name,
+                "units_per_shipment": units,
+                "dimensions": {"length": length, "width": width, "height": height},
+                "packaging_location": packaging_location,
+                "budget_constraint": budget,
+                "properties_weight": analysis_weights.get("properties", 0.1),
+                "logistics_weight": analysis_weights.get("logistics", 0.1),
+                "cost_weight": analysis_weights.get("cost", 0.1),
+                "sustainability_weight": analysis_weights.get("sustainability", 0.4),
+                "consumer_weight": analysis_weights.get("consumer", 0.2),
+                "metadata": {
+                    "timestamp": CURRENT_TIME,
+                    "user": CURRENT_USER,
+                    "volume": volume
                 }
-
-        try:
-            now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-            thread_id = f"{orchestrator.CURRENT_USER}-{int(datetime.now(timezone.utc).timestamp())}"
-
-            initial_state = {
-                "input_data": input_data,
-                "user_login": input_data["metadata"]["user"],
-                "current_time": now,
             }
-        
-        except Exception as e:
-            st.error(f"Input Data First: {e}")
-            return
 
-        # Show enhanced progress
-        progress_container = st.container()
-        
-        with progress_container:
-            st.markdown('<div class="progress-container">', unsafe_allow_html=True)
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+            try:
+                thread_id = f"{CURRENT_USER}-{int(datetime.now(timezone.utc).timestamp())}"
+
+                initial_state = {
+                    "input_data": input_data,
+                    "user_login": CURRENT_USER,
+                    "current_time": CURRENT_TIME,
+                }
             
-            # More detailed steps
-            steps = [
-                "Understanding product requirements...",
-                "Analyzing material compatibility...",
-                "Evaluating environmental factors...",
-                "Checking regional availability in " + packaging_location + "...",
-                "Assessing durability requirements...",
-                "Calculating carbon footprint...",
-                "Analyzing cost efficiency...",
-                "Generating detailed analysis..."
-            ]
+            except Exception as e:
+                st.error(f"Input Data First: {e}")
+                return
 
-            analysis_task = asyncio.create_task(
-                orchestrator.create_analysis_graph().ainvoke(
-                    initial_state,
-                    config={"configurable": {"thread_id": thread_id}}
+            # Show enhanced progress
+            progress_container = st.container()
+            
+            with progress_container:
+                st.markdown('<div class="progress-container">', unsafe_allow_html=True)
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # More detailed steps
+                steps = [
+                    "Understanding product requirements...",
+                    "Analyzing material compatibility...",
+                    "Evaluating environmental factors...",
+                    "Checking regional availability in " + packaging_location + "...",
+                    "Assessing durability requirements...",
+                    "Calculating carbon footprint...",
+                    "Analyzing cost efficiency...",
+                    "Generating detailed analysis..."
+                ]
+
+                analysis_task = asyncio.create_task(
+                    orchestrator.create_analysis_graph().ainvoke(
+                        initial_state,
+                        config={"configurable": {"thread_id": thread_id}}
+                    )
                 )
-            )
 
-            for i, step in enumerate(steps):
-                progress_value = (i + 1) / len(steps)
-                progress_bar.progress(progress_value)
-                status_text.markdown(f"<h4 style='text-align:center;color:#3b82f6;'>{step}</h4>", unsafe_allow_html=True)
-                await asyncio.sleep(0.5)
+                for i, step in enumerate(steps):
+                    progress_value = (i + 1) / len(steps)
+                    progress_bar.progress(progress_value)
+                    status_text.markdown(f"<h4 style='text-align:center;color:#3b82f6;'>{step}</h4>", unsafe_allow_html=True)
+                    await asyncio.sleep(0.5)
 
-            result = await analysis_task
-            st.markdown('</div>', unsafe_allow_html=True)
+                result = await analysis_task
+                st.markdown('</div>', unsafe_allow_html=True)
 
-        # Clear progress indicators
-        progress_container.empty()
+            # Clear progress indicators
+            progress_container.empty()
 
-        if err := (result.get("error") or result.get("final_results", {}).get("error")):
-            st.error(f"Analysis failed: {err}")
-            
-            # Display error analysis if available
-            error_info = result if result.get("error") else result.get("final_results", {})
-            if error_analysis := error_info.get("error_analysis", {}):
-                st.markdown("### Error Analysis")
-                if root_cause := error_analysis.get("root_cause_analysis", {}):
-                    st.warning(f"**Likely Cause:** {root_cause.get('likely_cause', 'Unknown')}")
-                    if factors := root_cause.get("contributing_factors", []):
-                        st.markdown("#### Contributing Factors:")
-                        for factor in factors:
-                            st.markdown(f"- **{factor.get('factor', 'Unknown factor')}** "
-                                      f"(Impact: {factor.get('impact', 'unknown')})")
-        else:
-            # Success animation
-            success_col1, success_col2, success_col3 = st.columns([1, 2, 1])
-            with success_col2:
-                lottie_success = load_lottieurl("https://assets7.lottiefiles.com/packages/lf20_jbrw3hcz.json")
-                if lottie_success:
-                    st_lottie(lottie_success, height=150, key="success_animation")
-            
-            # Dashboard layout
-            st.markdown("## 📊 Material Sustainability Analysis Results")
-            # Streamlit App Layout
-            st.title('Sustainability Comparison Dashboard')
-            materials = result.get("final_results", {}).get("material_summaries", [])
-            
-            #st.markdown('### 📊 Material-wise Radar Charts')
-            
-            #st.altair_chart(create_radar_charts(materials), use_container_width=False)
-            
+            if err := (result.get("error") or result.get("final_results", {}).get("error")):
+                st.error(f"Analysis failed: {err}")
                 
-            material_summaries = result.get("final_results", {}).get("material_summaries", [])
-            
-            if material_summaries:
-                # Add the new sustainability comparison table
-                st.markdown("### 📋 Sustainability Metrics Comparative Analysis")
-                comparison_table = create_sustainability_comparison_table(material_summaries)
-                if comparison_table is not None:
-                    st.dataframe(comparison_table, use_container_width=True, hide_index=True)
+                # Display error analysis if available
+                error_info = result if result.get("error") else result.get("final_results", {})
+                if error_analysis := error_info.get("error_analysis", {}):
+                    st.markdown("### Error Analysis")
+                    if root_cause := error_analysis.get("root_cause_analysis", {}):
+                        st.warning(f"**Likely Cause:** {root_cause.get('likely_cause', 'Unknown')}")
+                        if factors := root_cause.get("contributing_factors", []):
+                            st.markdown("#### Contributing Factors:")
+                            for factor in factors:
+                                st.markdown(f"- **{factor.get('factor', 'Unknown factor')}** "
+                                          f"(Impact: {factor.get('impact', 'unknown')})")
+            else:
+                # Success animation
+                success_col1, success_col2, success_col3 = st.columns([1, 2, 1])
+                with success_col2:
+                    lottie_success = load_lottieurl("https://assets7.lottiefiles.com/packages/lf20_jbrw3hcz.json")
+                    if lottie_success:
+                        st_lottie(lottie_success, height=150, key="success_animation")
                 
-                # Create comparison chart
-                comparison_chart = create_comparison_chart(material_summaries)
-                if comparison_chart:
-                    st.markdown('<div class="comparison-chart">', unsafe_allow_html=True)
-                    st.altair_chart(comparison_chart, use_container_width=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                # Dashboard layout
+                st.markdown("## 📊 Material Sustainability Analysis Results")
+                # Streamlit App Layout
+                st.title('Sustainability Comparison Dashboard')
+                materials = result.get("final_results", {}).get("material_summaries", [])
                 
-                # Display top 3 key metrics
-                if len(material_summaries) >= 1:
-                    st.markdown("### Key Sustainability Metrics")
-                    metric_cols = st.columns(3)
+                #st.markdown('### 📊 Material-wise Radar Charts')
+                
+                #st.altair_chart(create_radar_charts(materials), use_container_width=False)
+                
                     
-                    # Best option - adjusted for new structure
-                    def get_composite_score(material):
-                        comp_score = material.get("summary", {}).get("composite_score", {})
+                material_summaries = result.get("final_results", {}).get("material_summaries", [])
+                
+                if material_summaries:
+                    # Add the new sustainability comparison table
+                    st.markdown("### 📋 Sustainability Metrics Comparative Analysis")
+                    comparison_table = create_sustainability_comparison_table(material_summaries)
+                    if comparison_table is not None:
+                        st.dataframe(comparison_table, use_container_width=True, hide_index=True)
+                    
+                    # Create comparison chart
+                    comparison_chart = create_comparison_chart(material_summaries)
+                    if comparison_chart:
+                        st.markdown('<div class="comparison-chart">', unsafe_allow_html=True)
+                        st.altair_chart(comparison_chart, use_container_width=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Display top 3 key metrics
+                    if len(material_summaries) >= 1:
+                        st.markdown("### Key Sustainability Metrics")
+                        metric_cols = st.columns(3)
+                        
+                        # Best option - adjusted for new structure
+                        def get_composite_score(material):
+                            comp_score = material.get("summary", {}).get("composite_score", {})
+                            if isinstance(comp_score, dict):
+                                return float(comp_score.get("composite", 0))
+                            try:
+                                return float(str(comp_score).replace('%', '') or 0)
+                            except:
+                                return 0
+                        
+                        best_material = max(material_summaries, key=get_composite_score)
+                        best_name = best_material.get("material_name", "Unknown")
+                        
+                        # Handle new structure
+                        comp_score = best_material.get("summary", {}).get("composite_score", {})
                         if isinstance(comp_score, dict):
-                            return float(comp_score.get("composite", 0))
-                        try:
-                            return float(str(comp_score).replace('%', '') or 0)
-                        except:
-                            return 0
-                    
-                    best_material = max(material_summaries, key=get_composite_score)
-                    best_name = best_material.get("material_name", "Unknown")
-                    
-                    # Handle new structure
-                    comp_score = best_material.get("summary", {}).get("composite_score", {})
-                    if isinstance(comp_score, dict):
-                        best_score = comp_score.get("composite", "N/A")
-                    else:
-                        best_score = comp_score
-                    
-                    
-                    
-                    with metric_cols[0]:
-                        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                        st.markdown('<div class="metric-label">Top Recommended Material</div>', unsafe_allow_html=True)
-                        st.markdown(f'<div class="metric-value">{best_name}</div>', unsafe_allow_html=True)
-                        st.markdown(f'<div>Score: {best_score}</div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
+                            best_score = comp_score.get("composite", "N/A")
+                        else:
+                            best_score = comp_score
                         
-                    
-                
-                # Display detailed material analysis
-                for i, entry in enumerate(material_summaries[:5], 1):
-                    name = entry.get("material_name", f"Material {i}")
-                    review = entry.get("summary", {})
-
-                    # Extract fields - updated for new structure
-                    snapshot = review.get("executive_snapshot", "N/A")
-                    
-                    # Handle new composite score structure
-                    comp_score = review.get("composite_score", {})
-                    if isinstance(comp_score, dict):
-                        score = comp_score.get("composite", "N/A")
-                        metrics = comp_score.get("metrics", {})
-                    else:
-                        score = comp_score
-                        metrics = {}
-                    
-                    reg_ctx = review.get("regulatory_context", review.get("regional_regulatory_context", "No regulatory context available."))
-                    strengths = review.get("strengths", [])
-                    trade_offs = review.get("trade_offs", [])
-                    
-                    # Handle supply chain implications
-                    sci = review.get("supply_chain_implications", {})
-                    
-                    # Handle recommendation with new structure
-                    rec = review.get("consulting_recommendation", {})
-                    if not rec:  # Fallback to old structure
-                        rec = review.get("recommendation", {})
-                    
-                    # Convert adopt/advice for backward compatibility
-                    adopt = rec.get("adopt", False)
-                    if "advice" in rec:
-                        just = rec.get("advice", "")
-                    else:
-                        just = rec.get("justification", "")
-                    
-                    # Score color
-                    score_color = get_score_color(score)
-
-                    # Card container with score badge
-                    st.markdown(f'''
-                    <div class="analysis-card">
-                        <h3 class="material-header">
-                            <div class="material-score-circle" style="background-color: {score_color};">{i}</div>
-                            {name}
-                        </h3>
-                    ''', unsafe_allow_html=True)
-
-                    # Score visualization and executive snapshot
-                    col1, col2 = st.columns([1, 2])
-                    
-                    with col1:
-                        # Create gauge chart for score
-                        try:
-                            score_value = float(str(score).replace('%', '')) / 100 if isinstance(score, str) else score/100
-                        except:
-                            score_value = 0.5
-                        gauge_chart = create_gauge_chart(score_value)
-                        st.altair_chart(gauge_chart, use_container_width=True)
-                        st.markdown(f"<div style='text-align:center;'><strong>Sustainability Score</strong></div>", unsafe_allow_html=True)
-                    
-                    with col2:
-                        st.markdown('<div class="detail-section">', unsafe_allow_html=True)
-                        st.markdown("#### 📝 Executive Snapshot")
-                        st.markdown(f"{snapshot}")
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    # Create tabs for detailed information
-                    tabs = st.tabs(["📑 Overview", "⚖️ Trade-offs", "📦 Supply Chain", "📈 Recommendation"])
-                    
-                    with tabs[0]:  # Overview tab
-                        # Display metrics breakdown if available
-                        if metrics:
-                            st.markdown('<div class="detail-section">', unsafe_allow_html=True)
-                            st.markdown('<div class="section-title">📊 Composite Score Breakdown</div>', unsafe_allow_html=True)
-                            for dim, data in metrics.items():
-                                val = data.get("value", "")
-                                dim_score = data.get("score", "")
-                                st.markdown(f"* **{dim.replace('_', ' ').title()}**: {val} ➔ score {dim_score}/100")
-                            st.markdown(f"* **Weighted Composite**: {score}/100")
-                            st.markdown('</div>', unsafe_allow_html=True)
                         
-                        # Regional context
-                        st.markdown('<div class="detail-section">', unsafe_allow_html=True)
-                        st.markdown('<div class="section-title">📍 Regional Regulatory Context</div>', unsafe_allow_html=True)
-                        for line in reg_ctx.split("\n"):
-                            st.markdown(f"> {line}")
-                        st.markdown('</div>', unsafe_allow_html=True)
                         
-                        # Strengths visualization
-                        if strengths:
-                            st.markdown('<div class="detail-section">', unsafe_allow_html=True)
-                            st.markdown('<div class="section-title">✅ Strengths & Alignment</div>', unsafe_allow_html=True)
-                            for s in strengths:
-                                st.markdown(f"""
-                                <div class="strength-item">
-                                <strong>{s.get('dimension')}</strong><br/>
-                                {s.get('insight')}
-                                </div>
-                                """, unsafe_allow_html=True)
+                        with metric_cols[0]:
+                            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+                            st.markdown('<div class="metric-label">Top Recommended Material</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="metric-value">{best_name}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div>Score: {best_score}</div>', unsafe_allow_html=True)
                             st.markdown('</div>', unsafe_allow_html=True)
-
-                    with tabs[1]:  # Trade-offs tab
-                        if trade_offs:
-                            st.markdown('<div class="detail-section">', unsafe_allow_html=True)
-                            st.markdown('<div class="section-title">⚖️ Trade-off Analysis</div>', unsafe_allow_html=True)
-                            for t in trade_offs:
-                                st.markdown(f"""
-                                <div class="weakness-item">
-                                    <strong>{t.get('dimension')}</strong><br/>
-                                    {t.get('mitigation')}
-                                </div>
-                                """, unsafe_allow_html=True)
-                            st.markdown('</div>', unsafe_allow_html=True)
-
-                    with tabs[2]:  # Supply Chain tab
-                        st.markdown('<div class="detail-section">', unsafe_allow_html=True)
-                        st.markdown('<div class="section-title">📦 Supply-Chain Implications</div>', unsafe_allow_html=True)
-                        sc_cols = st.columns(2)
-                        with sc_cols[0]:
-                            st.markdown(f"""
-                            <div class="detail-section">
-                                <div class="section-title">💰 Costs</div>
-                                <p>{sci.get('costs', 'No cost data available.')}</p>
-                            </div>
-
-                            <div class="detail-section">
-                                <div class="section-title">🚚 Logistics</div>
-                                <p>{sci.get('logistics', 'No logistics data available.')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        with sc_cols[1]:
-                            st.markdown(f"""
-                            <div class="detail-section">
-                                <div class="section-title">📜 Regulatory</div>
-                                <p>{sci.get('regulatory', 'No regulatory data available.')}</p>
-                            </div>
                             
-                            <div class="detail-section">
-                                <div class="section-title">👥 Consumer Perception</div>
-                                <p>{sci.get('consumer', 'No consumer data available.')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
+                        
+                    
+                    # Display detailed material analysis
+                    for i, entry in enumerate(material_summaries[:5], 1):
+                        name = entry.get("material_name", f"Material {i}")
+                        review = entry.get("summary", {})
 
-                    with tabs[3]:  # Recommendation tab
+                        # Extract fields - updated for new structure
+                        snapshot = review.get("executive_snapshot", "N/A")
+                        
+                        # Handle new composite score structure
+                        comp_score = review.get("composite_score", {})
+                        if isinstance(comp_score, dict):
+                            score = comp_score.get("composite", "N/A")
+                            metrics = comp_score.get("metrics", {})
+                        else:
+                            score = comp_score
+                            metrics = {}
+                        
+                        reg_ctx = review.get("regulatory_context", review.get("regional_regulatory_context", "No regulatory context available."))
+                        strengths = review.get("strengths", [])
+                        trade_offs = review.get("trade_offs", [])
+                        
+                        # Handle supply chain implications
+                        sci = review.get("supply_chain_implications", {})
+                        
+                        # Handle recommendation with new structure
+                        rec = review.get("consulting_recommendation", {})
+                        if not rec:  # Fallback to old structure
+                            rec = review.get("recommendation", {})
+                        
+                        # Convert adopt/advice for backward compatibility
+                        adopt = rec.get("adopt", False)
+                        if "advice" in rec:
+                            just = rec.get("advice", "")
+                        else:
+                            just = rec.get("justification", "")
+                        
+                        # Score color
+                        score_color = get_score_color(score)
 
-                        st.markdown('<div class="detail-section use-case-item">', unsafe_allow_html=True)
-                        st.markdown('<div class="section-title">🎯 Strategic Recommendation</div>', unsafe_allow_html=True)
-                        st.markdown(f"{just}", unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
+                        # Card container with score badge
+                        st.markdown(f'''
+                        <div class="analysis-card">
+                            <h3 class="material-header">
+                                <div class="material-score-circle" style="background-color: {score_color};">{i}</div>
+                                {name}
+                            </h3>
+                        ''', unsafe_allow_html=True)
+
+                        # Score visualization and executive snapshot
+                        col1, col2 = st.columns([1, 2])
+                        
+                        with col1:
+                            # Create gauge chart for score
+                            try:
+                                score_value = float(str(score).replace('%', '')) / 100 if isinstance(score, str) else score/100
+                            except:
+                                score_value = 0.5
+                            gauge_chart = create_gauge_chart(score_value)
+                            st.altair_chart(gauge_chart, use_container_width=True)
+                            st.markdown(f"<div style='text-align:center;'><strong>Sustainability Score</strong></div>", unsafe_allow_html=True)
+                        
+                        with col2:
+                            st.markdown('<div class="detail-section">', unsafe_allow_html=True)
+                            st.markdown("#### 📝 Executive Snapshot")
+                            st.markdown(f"{snapshot}")
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        # Create tabs for detailed information
+                        tabs = st.tabs(["📑 Overview", "⚖️ Trade-offs", "📦 Supply Chain", "📈 Recommendation"])
+                        
+                        with tabs[0]:  # Overview tab
+                            # Display metrics breakdown if available
+                            if metrics:
+                                st.markdown('<div class="detail-section">', unsafe_allow_html=True)
+                                st.markdown('<div class="section-title">📊 Composite Score Breakdown</div>', unsafe_allow_html=True)
+                                for dim, data in metrics.items():
+                                    val = data.get("value", "")
+                                    dim_score = data.get("score", "")
+                                    st.markdown(f"* **{dim.replace('_', ' ').title()}**: {val} ➔ score {dim_score}/100")
+                                st.markdown(f"* **Weighted Composite**: {score}/100")
+                                st.markdown('</div>', unsafe_allow_html=True)
+                            
+                            # Regional context
+                            st.markdown('<div class="detail-section">', unsafe_allow_html=True)
+                            st.markdown('<div class="section-title">📍 Regional Regulatory Context</div>', unsafe_allow_html=True)
+                            for line in reg_ctx.split("\n"):
+                                st.markdown(f"> {line}")
+                            st.markdown('</div>', unsafe_allow_html=True)
+                            
+                            # Strengths visualization
+                            if strengths:
+                                st.markdown('<div class="detail-section">', unsafe_allow_html=True)
+                                st.markdown('<div class="section-title">✅ Strengths & Alignment</div>', unsafe_allow_html=True)
+                                for s in strengths:
+                                    st.markdown(f"""
+                                    <div class="strength-item">
+                                    <strong>{s.get('dimension')}</strong><br/>
+                                    {s.get('insight')}
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                st.markdown('</div>', unsafe_allow_html=True)
+
+                        with tabs[1]:  # Trade-offs tab
+                            if trade_offs:
+                                st.markdown('<div class="detail-section">', unsafe_allow_html=True)
+                                st.markdown('<div class="section-title">⚖️ Trade-off Analysis</div>', unsafe_allow_html=True)
+                                for t in trade_offs:
+                                    st.markdown(f"""
+                                    <div class="weakness-item">
+                                        <strong>{t.get('dimension')}</strong><br/>
+                                        {t.get('mitigation')}
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                st.markdown('</div>', unsafe_allow_html=True)
+
+                        with tabs[2]:  # Supply Chain tab
+                            st.markdown('<div class="detail-section">', unsafe_allow_html=True)
+                            st.markdown('<div class="section-title">📦 Supply-Chain Implications</div>', unsafe_allow_html=True)
+                            sc_cols = st.columns(2)
+                            with sc_cols[0]:
+                                st.markdown(f"""
+                                <div class="detail-section">
+                                    <div class="section-title">💰 Costs</div>
+                                    <p>{sci.get('costs', 'No cost data available.')}</p>
+                                </div>
+
+                                <div class="detail-section">
+                                    <div class="section-title">🚚 Logistics</div>
+                                    <p>{sci.get('logistics', 'No logistics data available.')}</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            with sc_cols[1]:
+                                st.markdown(f"""
+                                <div class="detail-section">
+                                    <div class="section-title">📜 Regulatory</div>
+                                    <p>{sci.get('regulatory', 'No regulatory data available.')}</p>
+                                </div>
+                                
+                                <div class="detail-section">
+                                    <div class="section-title">👥 Consumer Perception</div>
+                                    <p>{sci.get('consumer', 'No consumer data available.')}</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                        with tabs[3]:  # Recommendation tab
+
+                            st.markdown('<div class="detail-section use-case-item">', unsafe_allow_html=True)
+                            st.markdown('<div class="section-title">🎯 Strategic Recommendation</div>', unsafe_allow_html=True)
+                            st.markdown(f"{just}", unsafe_allow_html=True)
+                            st.markdown('</div>', unsafe_allow_html=True)
 
 
     # Footer and session info
@@ -1087,8 +1094,6 @@ async def main():
     <div class="footer">
         <p>Packaging analysis based on sustainability metrics, material properties, and regional availability.</p>
     """, unsafe_allow_html=True)
-
-
 
 # Add a lightweight dark mode toggle
 def add_dark_mode_toggle():
@@ -1194,8 +1199,12 @@ def add_dark_mode_toggle():
 if __name__ == "__main__":
     asyncio.run(main())
     add_dark_mode_toggle()  # Add dark mode toggle in sidebar
+    
+    # Generate session info here with local variables
+    CURRENT_USER = "codegeek03"
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    thread_id = f"{orchestrator.CURRENT_USER}-{int(datetime.now(timezone.utc).timestamp())}"
+    thread_id = f"{CURRENT_USER}-{int(datetime.now(timezone.utc).timestamp())}"
+    
     # Footer
     st.markdown(f"*Session ID: {thread_id} | Generated: {now}*", unsafe_allow_html=True)
     st.markdown("© 2025 Packaging Material Analysis System 🌱")

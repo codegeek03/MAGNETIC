@@ -55,7 +55,6 @@ class EnvironmentalImpactAgent:
     ],
     reasoning=True,  # Enable reasoning 
     markdown=True,
-    show_tool_calls=True
 )
 
         # Simplified metrics with weights

@@ -77,7 +77,6 @@ class ProductCompatibilityAgent:
     ],
     reasoning=True,  # Enable reasoning 
     markdown=True,
-    show_tool_calls=True
 )
 
             logger.info("ProductCompatibilityAgent initialized successfully")
