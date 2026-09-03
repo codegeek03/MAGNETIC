@@ -108,7 +108,6 @@ class BaseAgent(ABC):
             tools=tools,
             description=self.agent_description,
             instructions=self.agent_instructions,
-            reasoning=True,
             markdown=True,
         )
 
@@ -143,7 +142,7 @@ class BaseAgent(ABC):
     async def _call_llm(self, prompt: str) -> str:
         """Call the Agno agent and return raw response text."""
         response = await self._agent.arun(prompt)
-        return response.content
+        return str(response.content) if response and response.content else ""
 
     def _save_report(self, data: Dict[str, Any], report_type: str) -> str:
         """Persist *data* as JSON under ``reports_dir`` and return the path."""

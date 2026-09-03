@@ -72,7 +72,6 @@ class OrchestratorService(BaseAgent):
             tools=tools,
             description=self.agent_description,
             instructions=self.agent_instructions,
-            reasoning=True,
             markdown=True,
         )
 
