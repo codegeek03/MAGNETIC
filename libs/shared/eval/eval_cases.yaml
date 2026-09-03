@@ -1,0 +1,56 @@
+cases:
+  - id: "b2b_industrial_case_1"
+    description: "Industrial chemical shipping requiring high barrier and no consumer appeal."
+    input:
+      product_name: "Industrial Solvents"
+      category: "B2B Chemicals"
+      packaging_location: "Rotterdam, NL"
+      physical_state: "Liquid"
+      dimensions: {"length": 50.0, "width": 50.0, "height": 80.0}
+      weight: 200.0
+      fragility: "Low"
+      perishability: "Low"
+      moisture_sensitivity: "Low"
+      light_sensitivity: "Low"
+      shelf_life_days: 730
+      storage_conditions: "Warehouse"
+      target_market: "B2B Industrial"
+      cost_sensitivity: "High"
+      target_cost: 5.0
+      sustainability_goals: "PPWR compliant, robust"
+      properties_weight: 0.4
+      logistics_weight: 0.3
+      cost_weight: 0.2
+      sustainability_weight: 0.1
+      consumer_weight: 0.0
+    expected_outcome:
+      consumer_skipped: true
+      preferred_material_keywords: ["HDPE", "Steel", "Industrial"]
+
+  - id: "consumer_eco_case_1"
+    description: "Premium eco-friendly cosmetics requiring high consumer appeal."
+    input:
+      product_name: "Organic Face Serum"
+      category: "Cosmetics"
+      packaging_location: "Paris, FR"
+      physical_state: "Liquid"
+      dimensions: {"length": 3.0, "width": 3.0, "height": 10.0}
+      weight: 0.05
+      fragility: "High"
+      perishability: "Medium"
+      moisture_sensitivity: "High"
+      light_sensitivity: "High"
+      shelf_life_days: 180
+      storage_conditions: "Room Temp"
+      target_market: "Premium Consumer"
+      cost_sensitivity: "Low"
+      target_cost: 2.5
+      sustainability_goals: "Plastic-free, luxury feel, compostable or highly recyclable"
+      properties_weight: 0.2
+      logistics_weight: 0.1
+      cost_weight: 0.1
+      sustainability_weight: 0.3
+      consumer_weight: 0.3
+    expected_outcome:
+      consumer_skipped: false
+      preferred_material_keywords: ["Glass", "Bamboo", "Molded Pulp"]

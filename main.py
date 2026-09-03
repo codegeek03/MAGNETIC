@@ -1,44 +1,72 @@
-from typing import Dict, Any, List, Literal, TypedDict, Annotated, Optional, NotRequired, Union
-from datetime import datetime, timezone
-import logging
-import os
-import json
 import asyncio
-from dotenv import load_dotenv
+import json
+import logging
+import operator
+import os
+from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
+
+try:
+    from typing import Annotated, NotRequired  # Python 3.9+
+except ImportError:
+    from typing_extensions import Annotated, NotRequired  # type: ignore[assignment]
 
 # LangGraph imports
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
-# Agno imports
-from agno.agent import Agent
-from agno.models.google import Gemini
+# Centralised settings + shared service infrastructure
+from libs.shared.settings import get_settings
+from services.base.prompt_loader import PromptLoader
+from services.base.tool_registry import ToolRegistry
 
-# Import all your agents
-from agents.detail_input import ProductInput
-from agents.Product_Analyst import ProductCompatibilityAgent
-from agents.MaterialDB_agent import PackagingMaterialsAgent
-from agents.Material_Analyst import MaterialPropertiesAgent
-from agents.Logistics_Analyst import LogisticCompatibilityAgent
-from agents.Sourcing_Cost_Analyser import ProductionCostAgent
-from agents.Sustainability_Analyst import EnvironmentalImpactAgent
-from agents.Consumer_Behaviour_Analyst import ConsumerBehaviorAgent
-from agents.orchestrator import OrchestrationAgent
-from agents.context import get_content_json, fetch_url_content
+# ── Process-scoped singletons (built once, injected everywhere) ────────────────
+_settings = get_settings()
+_prompt_loader = PromptLoader()
+_tool_registry = ToolRegistry()
 
-# Constants
-CURRENT_USER = "codegeek03"
-CURRENT_TIME = "2025-05-09 21:01:46"  # Updated with provided time
+CURRENT_USER = _settings.current_user
+CURRENT_TIME = _settings.now_utc()
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# ── Service layer imports (replace old agents/ imports) ────────────────────────
+from agents.detail_input import ProductInput                                       # noqa: E402
+from agents.context import get_content_json, fetch_url_content                    # noqa: E402
 
-import operator
-from typing import Annotated
+from services.product_compatibility.agent import ProductCompatibilityService      # noqa: E402
+from services.materials_db.agent import MaterialsDatabaseService                  # noqa: E402
+from services.material_properties.agent import MaterialPropertiesService          # noqa: E402
+from services.logistics.agent import LogisticsService                             # noqa: E402
+from services.cost.agent import ProductionCostService                             # noqa: E402
+from services.sustainability.agent import SustainabilityService                   # noqa: E402
+from services.consumer_behavior.agent import ConsumerBehaviorService              # noqa: E402
+from services.orchestrator.agent import OrchestratorService                       # noqa: E402
+
+# ── Backward-compat aliases (app.py and tests import these names) ─────────────
+ProductCompatibilityAgent = ProductCompatibilityService
+PackagingMaterialsAgent   = MaterialsDatabaseService
+MaterialPropertiesAgent   = MaterialPropertiesService
+LogisticCompatibilityAgent = LogisticsService
+ProductionCostAgent       = ProductionCostService
+EnvironmentalImpactAgent  = SustainabilityService
+ConsumerBehaviorAgent     = ConsumerBehaviorService
+OrchestrationAgent        = OrchestratorService
+
+# Set up JSON logging and Sentry
+from pythonjsonlogger import jsonlogger
+import sentry_sdk
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logHandler = logging.StreamHandler()
+formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
+
+if sentry_dsn := os.getenv("SENTRY_DSN"):
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        traces_sample_rate=1.0,
+    )
+
 
 # State definition
 class AnalysisState(TypedDict):
@@ -50,6 +78,8 @@ class AnalysisState(TypedDict):
     cost_analysis: Annotated[Dict[str, Any], "cost_analysis"]
     sustainability_analysis: Annotated[Dict[str, Any], "sustainability_analysis"]
     consumer_analysis: Annotated[Dict[str, Any], "consumer_analysis"]
+    carbon_lca_analysis: Annotated[Dict[str, Any], "carbon_lca_analysis"]
+    compliance_doc_analysis: Annotated[Dict[str, Any], "compliance_doc_analysis"]
     final_results: Annotated[Dict[str, Any], "final_results"]
     input_status: Annotated[str, "input_status"]
     compatibility_status: Annotated[str, "compatibility_status"]
@@ -59,6 +89,9 @@ class AnalysisState(TypedDict):
     costs_status: Annotated[str, "costs_status"]
     sustainability_status: Annotated[str, "sustainability_status"]
     consumer_status: Annotated[str, "consumer_status"]
+    carbon_lca_status: Annotated[str, "carbon_lca_status"]
+    compliance_doc_status: Annotated[str, "compliance_doc_status"]
+    consumer_skipped: Annotated[bool, "consumer_skipped"]
     orchestration_status: Annotated[str, "orchestration_status"]
     error: Annotated[str, operator.add] # This is correctly set to append mode
     user_login: Annotated[str, "user_login"]
@@ -205,12 +238,24 @@ async def analyze_sustainability(state: AnalysisState) -> Dict:
 async def analyze_consumer_behavior(state: AnalysisState) -> Dict:
     logger.info("Starting consumer behavior analysis")
     if state.get("error"): return {}
+    
+    # Phase 4 Effort Scaling: skip consumer analysis for B2B/Industrial products
+    target_market = state.get("input_data", {}).get("target_market", "").lower()
+    if "b2b" in target_market or "industrial" in target_market:
+        logger.info(f"Skipping consumer behavior analysis for B2B/Industrial market: {target_market}")
+        return {
+            "consumer_analysis": {},
+            "consumer_status": "skipped",
+            "consumer_skipped": True
+        }
+
     try:
         agent = ConsumerBehaviorAgent()
         result = await agent.analyze_consumer_behavior(state["material_database"])
         return {
             "consumer_analysis": result,
-            "consumer_status": "completed"
+            "consumer_status": "completed",
+            "consumer_skipped": False
         }
     except Exception as e:
         msg = f"Consumer behavior analysis failed: {e}"
@@ -325,24 +370,26 @@ async def orchestrate_results(state: AnalysisState) -> Dict:
             all_materials.extend(crit_list)
 
         # Gather analysis scores from agent outputs (structured JSONs)
+        # Phase 4: Use new Detail/Summary split schemas
         consumer_scores = {
-            m["material_name"]: m["overall_consumer_score"] * 10
-            for m in state["consumer_analysis"].get("top_materials", [])
-        }
+            m["summary"]["material_name"]: m["summary"]["overall_score"] * 10
+            for m in state.get("consumer_analysis", {}).get("top_materials", [])
+        } if not state.get("consumer_skipped") else {}
+        
         logistics_scores = {
-            m["material_name"]: m["logistics_score"] * 10
+            m["summary"]["material_name"]: m["summary"]["overall_score"] * 10
             for m in state["logistics_analysis"].get("top_materials", [])
         }
         properties_scores = {
-            m["material_name"]: m["overall_score"] * 10
+            m["summary"]["material_name"]: m["summary"]["overall_score"] * 10
             for m in state["properties_analysis"].get("top_materials", [])
         }
         cost_scores = {
-            m["material_name"]: m["cost_score"] * 10
+            m["summary"]["material_name"]: m["summary"]["overall_score"] * 10
             for m in state["cost_analysis"].get("top_materials", [])
         }
         sustainability_scores = {
-            m["material_name"]: m["environmental_score"] * 10
+            m["summary"]["material_name"]: m["summary"]["overall_score"] * 10
             for m in state["sustainability_analysis"].get("top_materials", [])
         }
 
@@ -390,6 +437,25 @@ async def orchestrate_results(state: AnalysisState) -> Dict:
         # Generate material-wise executive summaries
         material_summaries = []
         for material in top_materials:
+            mat_name = material["material_name"]
+            sub_summaries = {}
+            for state_key, agent_name in [
+                ("properties_analysis", "properties"),
+                ("logistics_analysis", "logistics"),
+                ("cost_analysis", "cost"),
+                ("sustainability_analysis", "sustainability"),
+                ("consumer_analysis", "consumer"),
+            ]:
+                if state_key == "consumer_analysis" and state.get("consumer_skipped"):
+                    continue
+                tops = state.get(state_key, {}).get("top_materials", [])
+                for t in tops:
+                    if t.get("summary", {}).get("material_name") == mat_name:
+                        sub_summaries[agent_name] = t.get("summary")
+                        break
+            
+            material["subagent_summaries"] = sub_summaries
+
             summary = await orchestrator.generate_executive_summary(
                 product_name,
                 k,
@@ -477,82 +543,100 @@ async def handle_error(state: AnalysisState) -> Dict:
             }
         }
 
-def route_after_material_db(state: AnalysisState) -> Literal["run_analyses", "handle_error"]:
+from langgraph.constants import Send
+from libs.shared.registry import registry
+
+def route_phase_1(state: AnalysisState):
     if state.get("error") or not state.get("material_database", {}).get("materials"):
-        return "handle_error"
-    return "run_analyses"
+        return ["error_handler"]
+    
+    active_agents = registry.get_agents_for_phase(1, state.get("input_data", {}))
+    # Create Send commands for each active agent
+    return [Send(agent, state) for agent in active_agents]
 
-def check_analyses_completion(state: AnalysisState) -> Literal["orchestrate", "handle_error"]:
+def check_phase_1_completion(state: AnalysisState):
     if state.get("error"):
-        return "handle_error"
-    
-    required_statuses = {
-        "properties_status": "completed",
-        "logistics_status": "completed",
-        "costs_status": "completed",
-        "sustainability_status": "completed",
-        "consumer_status": "completed"
-    }
-    
-    for status_key, expected_value in required_statuses.items():
-        if state.get(status_key) != expected_value:
-            return "handle_error"
-            
-    return "orchestrate"
+        return "error_handler"
+    return "route_phase_2"
 
-def create_analysis_graph():
+def route_phase_2(state: AnalysisState):
+    if state.get("error"):
+        return ["error_handler"]
+    
+    active_agents = registry.get_agents_for_phase(2, state.get("input_data", {}))
+    if not active_agents:
+        return ["orchestrator"]
+    
+    return [Send(agent, state) for agent in active_agents]
+
+def check_phase_2_completion(state: AnalysisState):
+    if state.get("error"):
+        return "error_handler"
+    return "orchestrator"
+
+def create_analysis_graph(checkpointer=None):
     """Create and configure the analysis workflow graph."""
     workflow = StateGraph(AnalysisState)
 
-    # Add nodes
+    # Add core nodes
     workflow.add_node("input", process_input)
     workflow.add_node("compatibility", analyze_product_compatibility)
     workflow.add_node("material_db", query_material_database)
+    
+    # Add phase 1 nodes dynamically
     workflow.add_node("properties", analyze_material_properties)
     workflow.add_node("logistics", analyze_logistics)
     workflow.add_node("costs", analyze_costs)
     workflow.add_node("sustainability", analyze_sustainability)
     workflow.add_node("consumer", analyze_consumer_behavior)
+    
+    # Add phase 2 nodes
+    async def _run_carbon_lca(state): 
+        from services.carbon_lca.agent import CarbonLcaService
+        return await CarbonLcaService().run_carbon_lca(state)
+        
+    async def _run_compliance_doc(state): 
+        from services.compliance_doc.agent import ComplianceDocService
+        return await ComplianceDocService().run_compliance_doc(state)
+    
+    workflow.add_node("carbon_lca", _run_carbon_lca)
+    workflow.add_node("compliance_doc", _run_compliance_doc)
+    
+    workflow.add_node("route_phase_2", lambda s: {})
+    
     workflow.add_node("orchestrator", orchestrate_results)
     workflow.add_node("error_handler", handle_error)
 
-    # Linear flow
+    # Linear flow up to DB
     workflow.add_edge("input", "compatibility")
     workflow.add_edge("compatibility", "material_db")
 
-    # Branch after material_db
+    # Phase 1 fan-out
     workflow.add_conditional_edges(
         "material_db",
-        route_after_material_db,
-        {
-            "run_analyses": "run_analyses",
-            "handle_error": "error_handler"
-        }
+        route_phase_1,
+        ["properties", "logistics", "costs", "sustainability", "consumer", "error_handler"]
     )
-
-    # Parallel analyses
-    workflow.add_node("run_analyses", lambda s: {})
-    for node in ["properties", "logistics", "costs", "sustainability", "consumer"]:
-        workflow.add_edge("run_analyses", node)
     
-    workflow.add_node("join_analyses", lambda s: {})
+    # Phase 1 fan-in to phase 2
     for node in ["properties", "logistics", "costs", "sustainability", "consumer"]:
-        workflow.add_edge(node, "join_analyses")
-    
+        workflow.add_edge(node, "route_phase_2")
+        
     workflow.add_conditional_edges(
-        "join_analyses",
-        check_analyses_completion,
-        {
-            "orchestrate": "orchestrator",
-            "handle_error": "error_handler"
-        }
+        "route_phase_2",
+        route_phase_2,
+        ["carbon_lca", "compliance_doc", "orchestrator", "error_handler"]
     )
     
+    # Phase 2 fan-in to orchestrator
+    for node in ["carbon_lca", "compliance_doc"]:
+        workflow.add_edge(node, "orchestrator")
+        
     workflow.add_edge("orchestrator", END)
     workflow.add_edge("error_handler", END)
 
     workflow.set_entry_point("input")
-    return workflow.compile(checkpointer=MemorySaver())
+    return workflow.compile(checkpointer=checkpointer or MemorySaver())
 
 def print_results(result: Dict[str, Any], thread_id: str):
     """Print analysis results including performance reviews for multiple materials."""
@@ -593,18 +677,18 @@ def print_results(result: Dict[str, Any], thread_id: str):
             comp_obj = review.get("composite_score", {})
             metrics  = comp_obj.get("metrics", {})
             composite = comp_obj.get("composite", "N/A")
-
+            
             strengths    = review.get("strengths", [])
             trade_offs   = review.get("trade_offs", [])
             sci          = review.get("supply_chain_implications", {})
             rec          = review.get("consulting_recommendation", {})
             reg_context  = review.get("regulatory_context", "No regulatory context available.")
+            provenance   = review.get("fact_provenance", [])
 
             print(f"\n{i}. Material: {name}")
             print("------------------------")
             print(f"Executive Snapshot: {snapshot}")
 
-            # Composite Score breakdown
             print("\n📊 Composite Score:")
             for dim, data in metrics.items():
                 val = data.get("value", "")

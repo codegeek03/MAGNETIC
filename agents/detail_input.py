@@ -1,33 +1,35 @@
-from datetime import datetime
-import json
-import os
 import asyncio
+import json
 import logging
-from typing import Dict, Union, Optional
+import os
+from datetime import datetime
+from typing import Dict, Optional, Union
+
+from libs.shared.settings import get_settings
+
+_settings = get_settings()
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, 
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 JsonData = Dict[str, Union[str, int, float, Dict[str, float], Dict[str, str]]]
 
 class ProductInput:
-    def __init__(self, current_time: str, user_login: str):
+    def __init__(self, current_time: str = None, user_login: str = None):
         self.product_name = ""
         self.units_per_shipment = 0
         self.dimensions = {"length": 0, "width": 0, "height": 0}
         self.packaging_location = ""
         self.budget_constraint = 0.0
-        self.analysis_weights = {
-            "properties": 0.1,
-            "logistics": 0.1,
-            "cost": 0.1,
-            "sustainability": 0.4,
-            "consumer": 0.2
-        }
-        self.timestamp = current_time
-        self.user = user_login
+        # Default weights come from settings; the UI flow can override them
+        self.analysis_weights = _settings.analysis_weights.as_dict()
+        # Use live settings values if caller doesn't supply overrides
+        self.timestamp = current_time or _settings.now_utc()
+        self.user = user_login or _settings.current_user
 
     async def validate_product_details(self) -> Optional[str]:
         if not self.product_name:
@@ -180,9 +182,11 @@ class ProductInput:
                 }
             }
 
-            os.makedirs("temp_KB", exist_ok=True)
-            filename = os.path.join("temp_KB", 
-                                    f"{self.product_name.lower().replace(' ', '_')}.json")
+            os.makedirs(_settings.reports_dir, exist_ok=True)
+            filename = os.path.join(
+                _settings.reports_dir,
+                f"{self.product_name.lower().replace(' ', '_')}.json",
+            )
 
             await asyncio.get_event_loop().run_in_executor(
                 None,

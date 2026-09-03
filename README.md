@@ -1,264 +1,89 @@
-# Blue Yonder Sustainable Packaging Challenge 🌱📦
+# Sustainable Packaging Multi-Agent Platform 🌱📦
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Status](https://img.shields.io/badge/Status-Active-brightgreen)
-![Last Updated](https://img.shields.io/badge/Last%20Updated-2025--05--10-blue)
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Architecture](https://img.shields.io/badge/Architecture-Microservices-orange)
+![Agent Framework](https://img.shields.io/badge/Agents-Agno%20%7C%20LangGraph-green)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 
-## 🏗️ Architecture
-```mermaid
----
-config:
-  layout: dagre
-  look: neo
-  theme: redux
----
-flowchart TD
- subgraph Inputs["⚡ DATA NEXUS"]
-        Z{{"Input Agent"}}
-        Web{{"World Wide Web"}}
-        WikiSearch{{"Tavily Search"}}
-        DuckDuckGo{{"DuckDuckGo"}}
-        Newspaper4k{{"Newspaper4k"}}
-        SocialMedia{{"Social Media"}}
-  end
- subgraph Analyst_Group["🔬 ANALYSIS MATRIX"]
-        C[/"Sustainability Assessment"/]
-        D[/"Sourcing Cost Analysis"/]
-        E[/"Logistics Evaluation"/]
-        F[/"Consumer Behavior Insights"/]
-        R[/"Regulatory Compliance"/]
-        P[/"Production Cost Modeling"/]
-  end
- subgraph Processors["⚙️ CORE ENGINES"]
-        A[("Product Compatibility")]
-        B[("Materials Database")]
-        G[("Orchestration Layer")]
-  end
- subgraph Explainability["🧠 NEURAL SYNTHESIS"]
-        EX(["Reasoning & Insights Generator"])
-  end
- subgraph Details["📊 ANALYTICS DASHBOARD"]
-        Scores>"Performance Metrics"]
-        Tradeoffs>"Comparative Analysis"]
-        RegNotes>"Regulatory Intelligence"]
-  end
- subgraph Outputs["🚀 SOLUTION MATRIX"]
-        H>"Top K Materials"]
-        Details
-        ResultsDB[("Knowledge Vault")]
-  end
-    Web -- User Intent Vector --> WikiSearch & DuckDuckGo & Newspaper4k & SocialMedia
-    WikiSearch -- Regulatory Corpus --> R
-    DuckDuckGo -- Market Pulse Data --> G
-    Newspaper4k -- Trend Signals --> G & E & F & D
-    SocialMedia -- Sentiment Vectors --> F
-    Z -- Core User Input --> A
-    A -- Material Compatibility Matrix --> B
-    B == Material Properties ==> C & D & E & F & R & P
-    C -- Sustainability Index --> G
-    D -- Cost Vectors --> G
-    E -- Logistics Metrics --> G
-    F -- Market Acceptance Probability --> G
-    P -- Production Feasibility Score --> G
-    R -- Compliance Risk Profile --> G
-    C --> SharedKB[("Shared Knowledge Base")]
-    D --> SharedKB
-    E --> SharedKB
-    F --> SharedKB
-    R --> SharedKB
-    P --> SharedKB
-    A --> SharedKB
-    SharedKB --> G & EX
-    G == Optimized Material Ranking ==> H
-    G -- Historical Pattern Storage --> ResultsDB
-    G <-. Contextual Framework .-> EX
-    H -- Performance Vectors --> Scores
-    H -- "Trade-off Matrix" --> Tradeoffs
-    H -- Regulatory Landscape --> RegNotes
-    EX -. Neural Feedback Loop .-> G
-```
-
-
-## 📋 Table of Contents
-- [Overview](#-overview)
-- [Key Innovations](#-key-innovations)
-- [Architecture & Components](#-architecture--components)
-  - [1. Input Layer](#1-input-layer)
-  - [2. Processing Layer](#2-processing-layer)
-  - [3. Analysis Modules](#3-analysis-modules)
-  - [4. Orchestration Layer](#4-orchestration-layer)
-  - [5. Reporting & Persistence](#5-reporting--persistence)
-- [Installation](#🛠Installation)
-- [Usage](#usage)
-- [Output Structure](#output-structure)
-- [Error Handling & Resilience](#error-handling--resilience)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
+An enterprise-grade, multi-agent orchestration platform designed to automate the evaluation, compliance, and selection of sustainable packaging materials. Powered by Google Gemini, LangGraph, and a highly scalable background execution model.
 
 ## 🎯 Overview
-This system is a **LangGraph-driven**, multi-agent orchestration for evaluating and ranking sustainable packaging materials. It integrates Google’s Gemini model for rich text reasoning, executes specialized tool calls, and produces slide-ready JSON reports with the help of **Agno** —automating end-to-end material selection across:
 
-- 🌿 **Environmental Impact**  
-- 💰 **Cost Analysis**  
-- 📦 **Logistics & Supply-Chain**  
-- 👥 **Consumer Behavior**  
-- ⚖️ **Regulatory Compliance**  
+Transitioning from prototype to a production-ready SaaS backend, this platform leverages a **Dynamic Agent Registry** and a **Fact Broker** to provide evidence-based, region-specific packaging recommendations. It evaluates materials across environmental impact, logistics, cost, consumer behavior, and regulatory compliance without hallucinating facts.
 
-## ✨ Key Features
+## 🏗️ Architecture
 
-#### **Innovative Self Context** : Agno’s built-in Context store to declaratively share and merge structured agent state across parallel executions—allowing fine-grained, selective knowledge sharing—instead of multithreading’s manual, lock-based sharing of raw memory.
+The system is built on a distributed microservices architecture to ensure non-blocking UI interactions, durable state persistence, and cost-effective LLM invocations.
 
-- **LangGraph State Machine**  
-  Orchestrates flow using a directed graph of TypedDict states, transitions, and conditional branching.
-- **Parallel Agent-Calling**  
-  Launches independent analysis agents concurrently (properties, logistics, cost, sustainability, consumer).
-- **Parallel Tool-Calling**  
-  Uses Tavily,DuckDuckGo and Newspaper4k tools for enhanced research.
-- **Gemini-Backed Prompting**  
-  Uses Google Gemini (v2.0-flash) for deep reasoning, with `show_tool_calls=True` to trace tool invocations and aid debugging.
-- **JSON-First Reporting**  
-  Each material summary is generated as a precise JSON schema—ideal for slides, dashboards, or APIs.
-- **Dynamic Weighting & Scoring**  
-  The composite score calculation is guided by configurable weights, allowing users to prioritize specific goals—such as sustainability or cost-effectiveness. Normalized sub-scores and detailed breakdowns     enhance transparency and explainability.
-- **Regulatory Context Fetch**  
-  Live web-search integration to pull jurisdiction-specific regulation snippets for each material.
-- **Robust Error Handling**  
-  Full error-capture, root-cause analysis via language model, and JSON error-reports for transparent troubleshooting.
-- **Persistent Reporting**  
-  Automatically saves both “analysis” and “error” reports under a timestamped directory.
+### Core Components
+1. **Frontend (React & Vite)**: A premium, highly responsive UI (`frontend/src/App.tsx`) built with React and Tailwind-like Vanilla CSS. It offloads heavy analysis to the FastAPI backend.
+2. **Backend API (FastAPI)**: Exposes REST endpoints (`api/main.py`) to handle incoming analysis parameters and BOM uploads, delegating execution to the task queue.
+3. **Task Queue (Celery & Redis)**: Long-running LangGraph executions are enqueued as asynchronous Celery tasks (`libs/shared/tasks.py`), backed by Redis.
+4. **Orchestrator (LangGraph & Postgres)**: The state machine (`main.py`) controls agent flow. It uses `AsyncPostgresSaver` to persist intermediate states.
+4. **Dynamic Agent Registry (`libs/shared/registry.py`)**: Unlike fixed fan-out models, the registry routes graph execution *only* to agents whose trigger conditions are met (e.g., ESG reporting flags). This strictly bounds token usage.
+5. **Fact Broker MCP**: A unified data layer that provides cached, authoritative grounding (EUR-Lex, DEFRA, Open Food Facts) to prevent LLM hallucinations.
 
-## 🛠️ Architecture & Components
+### The Agent Roster
+The platform executes in a two-stage fan-out:
+- **Phase 1 Analysts**: `MaterialProperties`, `Logistics`, `ProductionCost`, `Sustainability`, `ConsumerBehavior`.
+- **Phase 2 Synthesis**: `CarbonLcaService` (kg-CO2e deltas) and `ComplianceDocService` (PPWR Declaration of Conformity).
 
-### 1. Input Layer
-- **`input.py`**  
-  - Asks for product name, location, target specs via CLI  
-  - Validates & normalizes raw inputs  
-  - Emits initial `AnalysisState.input_data`
+## 🚀 Getting Started
 
-### 2. Processing Layer
-- **`Product_compatibility.py`**  
-  - Evaluates material–product fit  
-  - Checks basic constraints (e.g., mechanical, thermal compatibility)  
-  - Populates `compatibility_analysis`
-- **`MaterialDB_agent.py`**  
-  - Queries internal/external material catalogs  
-  - Filters by compatibility criteria  
-  - Returns candidate materials list
+### Prerequisites
+- Docker and Docker Compose
+- Google Gemini API Key
 
-### 3. Analysis Modules
-Each runs in **parallel** under a LangGraph “run_analyses” fork:
-- **`MaterialPropertiesAgent`**  
-  - Measures strength, barrier properties, thermal tolerance  
-- **`LogisticCompatibilityAgent`**  
-  - Computes weight, bulk, transport losses  
-- **`ProductionCostAgent`**  
-  - Estimates sourcing & manufacturing unit costs  
-- **`EnvironmentalImpactAgent`**  
-  - Calculates carbon footprint, recyclability, biodegradability  
-- **`ConsumerBehaviorAgent`**  
-  - Models market acceptance, packaging appeal  
-- **`RegulationsAgent`**  
-  - Web-searches relevant directives (EU, FDA, BIS) via `show_tool_calls`
-- **`ExplainabilityAgent`**
-  - Generates robust explanations with thinking tools.
-
-Each module returns a standardized top-materials list with raw scores.
-
-### 4. Orchestration Layer
-- **`Orchestrator.py`**  
-  - Gathers all individual scores  
-  - Applies **configurable weights** (default in code)  
-  - Selects top-K materials by composite score  
-  - For each, calls `generate_executive_summary()`:
-    - Crafts a detailed prompt to Gemini  
-    - Embeds original metrics, normalized scores, strategic bullets  
-    - Injects **regulatory snippet** pulled from live search  
-    - Parses the JSON response back into Python
-- **LangGraph Workflow**  
-  - `process_input → analyze_product_compatibility → query_material_database`  
-  - **If materials found** → fork into 5 analysis nodes → join → orchestrate  
-  - **Else/Error** → error handler node
-
-### 5. Reporting & Persistence
-- **Slide-Ready JSON**  
-  - Schema includes:  
-    1. `executive_snapshot`  
-    2. `composite_score` (raw + normalized + weighted)  
-    3. `strengths` & `trade_offs`  
-    4. `supply_chain_implications` & `consulting_recommendation`  
-    5. `regulatory_context` snippet  
-- **File Saving**  
-  - Writes to `temp_KB/reports/analysis_report_<timestamp>.json`  
-  - Error reports likewise saved with clear statuses
-
----
-
-## 🛠️ Installation
-1. Clone repo  
-2. `pip install -r requirements.txt`  
-3. Create `.env` with `GOOGLE_API_KEY=…`  
-4. Ensure directories:  
+### Installation & Execution
+1. Clone the repository:
    ```bash
-   mkdir -p temp_KB/reports logs
-## 🚀 Usage
-```bash
-python main.py
+   git clone https://github.com/codegeek03/Multi_Agent_Architecture_for_Sustainable_Packaging.git
+   cd Multi_Agent_Architecture_for_Sustainable_Packaging
+   ```
+2. Configure Environment:
+   ```bash
+   cp .env.example .env
+   # Add your GEMINI_API_KEY to the .env file
+   ```
+3. Boot the Infrastructure:
+   ```bash
+   docker-compose up --build
+   ```
+   This spins up:
+   - `redis` (Message Broker)
+   - `postgres` (State Checkpointing & Fact Broker Cache)
+   - `celery_worker` (Background Execution)
+   - `web` (Streamlit UI on `http://localhost:8501`)
+
+4. Navigate to `http://localhost:8501` to start your packaging analysis.
+
+## 🛡️ DevOps & LLMOps
+
+This repository enforces strict engineering operations tailored for LLM applications:
+- **Continuous Integration (`.github/workflows/ci.yml`)**: Blocks merges that fail linting (`ruff`, `mypy`), security checks (`pip-audit`, `gitleaks`), or unit tests.
+- **LLM Eval Harness**: Prompts are tested against a golden set (`libs/shared/eval/evaluator.py`) using LLM-as-a-judge to catch silent output degradation before deployment.
+- **Observability**: Fully structured JSON logging (`python-json-logger`) and integrated `sentry-sdk` for production error tracking.
+- **Architecture Decision Records (ADRs)**: Crucial engineering decisions are documented in `docs/adr/`.
+
+## 📂 Repository Structure
+
+```text
+├── agents/                 # Legacy/Utility input agents
+├── libs/shared/            # Core schemas, registry, celery tasks, and LLM evals
+├── services/               # Microservices representing each specialized Agent
+├── prompts/                # Versioned XML-structured system prompts
+├── docs/adr/               # Architecture Decision Records
+├── tests/                  # Unit and Contract tests (Pydantic schema validation)
+├── app.py                  # Streamlit Web UI
+├── main.py                 # LangGraph Orchestrator definitions
+├── docker-compose.yml      # Infrastructure topology
+└── Dockerfile              # Unified application container
 ```
-Follow prompts for product name & location
-
-Watch parallel tool-calls and state transitions in logs
-
-Find JSON report in temp_KB/reports/
-
-## 📊 Output Structure
-```jsonc
-{
-  "product_name": "SuperSnack Bar",
-  "timestamp": "2025-05-09 21:04:45",
-  "top_materials": [
-    {
-      "material_name": "PLA Film",
-      "composite_score": { /* 0–100 */ },
-      "strengths": [ /* … */ ],
-      "trade_offs": [ /* … */ ],
-      "supply_chain_implications": { /* … */ },
-      "consulting_recommendation": { /* … */ },
-      "regulatory_context": "EU Packaging Directive 94/62/EC excerpt…"
-    }
-    // …
-  ],
-  "report_path": "temp_KB/reports/analysis_report_2025-05-09_21-04-45.json"
-}
-```
-## 🛡️ Error Handling & Resilience
--Any node failure routes to handle_error
-
--LLM-driven root-cause analysis explains failures
-
--JSON error report saved alongside standard reports
-
--Logs include stack traces and tool-call histories
 
 ## 🤝 Contributing
--Fork & branch
-
--Add tests for new agents or states
-
--Submit PR with clear changelog
+1. Create a feature branch off `main`.
+2. Ensure your changes pass the CI pipeline (especially the Pydantic contract tests and LLM eval harness).
+3. Submit a Pull Request for review.
 
 ## 📄 License
--MIT © Blue Yonder Packaging Challenge
-
-## 🙏 Acknowledgments
--LangGraph team for orchestration framework
-
-Google Cloud for Gemini APIs
-
-All open-source tool developers and community contributors
-
-
-
-This expanded README surfaces your system’s novel features—**parallel agent tool-calling**, **LangGraph state orchestration**, **LLM-driven JSON prompting**, and robust **error-handling with explanatory analysis**—all in a slide- and API-friendly format. Let me know if you’d like any section refined!
-
+This project is licensed under the MIT License.
