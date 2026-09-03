@@ -5,8 +5,8 @@ from agno.agent import Agent
 from agno.models.google import Gemini
 
 from libs.shared.schemas.analysis import CarbonLcaResult
-from services.base.tool_registry import ToolRegistry
 from libs.shared.settings import get_settings
+from services.base.tool_registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
