@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime
 from typing import Dict, Optional, Union
 
 from libs.shared.settings import get_settings
@@ -71,9 +70,9 @@ class ProductInput:
         try:
             print("\nEnter Product Details:")
             print("=" * 50)
-            
+
             self.product_name = input("Product Name: ").strip()
-            
+
             while True:
                 try:
                     self.units_per_shipment = int(input("Units per Shipment: "))
@@ -82,7 +81,7 @@ class ProductInput:
                     print("Please enter a positive number.")
                 except ValueError:
                     print("Please enter a valid number.")
-            
+
             print("\nEnter Dimensions (in cm):")
             while True:
                 try:
@@ -94,9 +93,9 @@ class ProductInput:
                     print("All dimensions must be positive numbers.")
                 except ValueError:
                     print("Please enter valid numbers.")
-            
+
             self.packaging_location = input("\nPackaging Location: ").strip()
-            
+
             while True:
                 try:
                     self.budget_constraint = float(input("Budget Constraint ($): "))
@@ -105,7 +104,7 @@ class ProductInput:
                     print("Please enter a positive number.")
                 except ValueError:
                     print("Please enter a valid number.")
-            
+
             await self.get_analysis_weights()
 
             validation_error = await self.validate_product_details()
@@ -140,8 +139,8 @@ class ProductInput:
             raise
 
     def calculate_volume(self) -> float:
-        return (self.dimensions["length"] * 
-                self.dimensions["width"] * 
+        return (self.dimensions["length"] *
+                self.dimensions["width"] *
                 self.dimensions["height"])
 
     def display_details(self) -> None:

@@ -10,7 +10,7 @@ Verifies the ToolRegistry:
 
 import pytest
 
-from services.base.tool_registry import ToolRegistry, AVAILABLE_TOOLS
+from services.base.tool_registry import AVAILABLE_TOOLS, ToolRegistry
 
 
 @pytest.fixture

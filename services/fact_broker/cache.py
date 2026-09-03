@@ -61,7 +61,7 @@ class FactCache:
 
                 if not row:
                     return None
-                
+
                 if row["expires_at"] < now:
                     cursor.execute("DELETE FROM facts WHERE key = ?", (key,))
                     conn.commit()
@@ -87,7 +87,7 @@ class FactCache:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     """
-                    INSERT OR REPLACE INTO facts 
+                    INSERT OR REPLACE INTO facts
                     (key, value, source, fetched_at, confidence, ttl_seconds, expires_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,

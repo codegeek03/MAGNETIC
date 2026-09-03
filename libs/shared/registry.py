@@ -1,5 +1,6 @@
-from typing import Callable, Dict, List, Any
 from dataclasses import dataclass
+from typing import Any, Callable, Dict, List
+
 
 @dataclass
 class AgentDefinition:
@@ -42,7 +43,7 @@ registry.register(
 )
 registry.register(
     "consumer", 1,
-    lambda input_data: "b2b" not in input_data.get("target_market", "").lower() 
+    lambda input_data: "b2b" not in input_data.get("target_market", "").lower()
                        and "industrial" not in input_data.get("target_market", "").lower()
 )
 

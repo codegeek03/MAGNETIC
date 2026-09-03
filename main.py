@@ -1,18 +1,18 @@
 import asyncio
-import json
 import logging
 import operator
 import os
-from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
+from datetime import datetime, timezone
+from typing import Any, Dict, TypedDict
 
 try:
-    from typing import Annotated, NotRequired  # Python 3.9+
+    from typing import Annotated  # Python 3.9+
 except ImportError:
-    from typing_extensions import Annotated, NotRequired  # type: ignore[assignment]
+    from typing_extensions import Annotated  # type: ignore[assignment]
 
 # LangGraph imports
-from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph
 
 # Centralised settings + shared service infrastructure
 from libs.shared.settings import get_settings
@@ -28,17 +28,15 @@ CURRENT_USER = _settings.current_user
 CURRENT_TIME = _settings.now_utc()
 
 # ── Service layer imports (replace old agents/ imports) ────────────────────────
-from agents.detail_input import ProductInput                                       # noqa: E402
-from agents.context import get_content_json, fetch_url_content                    # noqa: E402
-
-from services.product_compatibility.agent import ProductCompatibilityService      # noqa: E402
-from services.materials_db.agent import MaterialsDatabaseService                  # noqa: E402
-from services.material_properties.agent import MaterialPropertiesService          # noqa: E402
-from services.logistics.agent import LogisticsService                             # noqa: E402
-from services.cost.agent import ProductionCostService                             # noqa: E402
-from services.sustainability.agent import SustainabilityService                   # noqa: E402
-from services.consumer_behavior.agent import ConsumerBehaviorService              # noqa: E402
-from services.orchestrator.agent import OrchestratorService                       # noqa: E402
+from agents.detail_input import ProductInput  # noqa: E402
+from services.consumer_behavior.agent import ConsumerBehaviorService  # noqa: E402
+from services.cost.agent import ProductionCostService  # noqa: E402
+from services.logistics.agent import LogisticsService  # noqa: E402
+from services.material_properties.agent import MaterialPropertiesService  # noqa: E402
+from services.materials_db.agent import MaterialsDatabaseService  # noqa: E402
+from services.orchestrator.agent import OrchestratorService  # noqa: E402
+from services.product_compatibility.agent import ProductCompatibilityService  # noqa: E402
+from services.sustainability.agent import SustainabilityService  # noqa: E402
 
 # ── Backward-compat aliases (app.py and tests import these names) ─────────────
 ProductCompatibilityAgent = ProductCompatibilityService
@@ -51,8 +49,8 @@ ConsumerBehaviorAgent     = ConsumerBehaviorService
 OrchestrationAgent        = OrchestratorService
 
 # Set up JSON logging and Sentry
-from pythonjsonlogger import jsonlogger
 import sentry_sdk
+from pythonjsonlogger import jsonlogger
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -96,7 +94,7 @@ class AnalysisState(TypedDict):
     error: Annotated[str, operator.add] # This is correctly set to append mode
     user_login: Annotated[str, "user_login"]
     current_time: Annotated[str, "current_time"]
-    
+
 
 
 # Node definitions
@@ -106,7 +104,7 @@ async def process_input(state: AnalysisState) -> Dict:
         if not state.get("input_data"):
             agent = ProductInput(CURRENT_TIME, CURRENT_USER)
             details = await agent.get_product_details()
-            
+
             return {
                 "input_data": details,
                 "input_status": "completed",
@@ -125,10 +123,11 @@ async def process_input(state: AnalysisState) -> Dict:
 async def analyze_product_compatibility(state: AnalysisState) -> Dict:
     logger.info("Starting product compatibility analysis")
     try:
-        if state.get("error"): return {}
+        if state.get("error"):
+            return {}
         agent = ProductCompatibilityAgent()
         result = await agent.analyze_product_compatibility(
-            state["input_data"]["product_name"], 
+            state["input_data"]["product_name"],
             state["input_data"]
         )
         return {
@@ -146,7 +145,8 @@ async def analyze_product_compatibility(state: AnalysisState) -> Dict:
 async def query_material_database(state: AnalysisState) -> Dict:
     logger.info("Starting material database query")
     try:
-        if state.get("error"): return {}
+        if state.get("error"):
+            return {}
         agent = PackagingMaterialsAgent(CURRENT_USER, CURRENT_TIME)
         result = await agent.find_materials_by_criteria(state["compatibility_analysis"],state["input_data"])
         if not result.get("materials"):
@@ -165,7 +165,8 @@ async def query_material_database(state: AnalysisState) -> Dict:
 
 async def analyze_material_properties(state: AnalysisState) -> Dict:
     logger.info("Starting material properties analysis")
-    if state.get("error"): return {}
+    if state.get("error"):
+        return {}
     try:
         agent = MaterialPropertiesAgent()
         result = await agent.analyze_material_properties(state["material_database"])
@@ -183,7 +184,8 @@ async def analyze_material_properties(state: AnalysisState) -> Dict:
 
 async def analyze_logistics(state: AnalysisState) -> Dict:
     logger.info("Starting logistics analysis")
-    if state.get("error"): return {}
+    if state.get("error"):
+        return {}
     try:
         agent = LogisticCompatibilityAgent()
         result = await agent.analyze_top_logistics_materials(state["material_database"],state["input_data"])
@@ -201,7 +203,8 @@ async def analyze_logistics(state: AnalysisState) -> Dict:
 
 async def analyze_costs(state: AnalysisState) -> Dict:
     logger.info("Starting cost analysis")
-    if state.get("error"): return {}
+    if state.get("error"):
+        return {}
     try:
         agent = ProductionCostAgent()
         result = await agent.analyze_production_costs(state["material_database"],state["input_data"])
@@ -219,7 +222,8 @@ async def analyze_costs(state: AnalysisState) -> Dict:
 
 async def analyze_sustainability(state: AnalysisState) -> Dict:
     logger.info("Starting sustainability analysis")
-    if state.get("error"): return {}
+    if state.get("error"):
+        return {}
     try:
         agent = EnvironmentalImpactAgent()
         result = await agent.analyze_environmental_impact(state["material_database"])
@@ -237,8 +241,9 @@ async def analyze_sustainability(state: AnalysisState) -> Dict:
 
 async def analyze_consumer_behavior(state: AnalysisState) -> Dict:
     logger.info("Starting consumer behavior analysis")
-    if state.get("error"): return {}
-    
+    if state.get("error"):
+        return {}
+
     # Phase 4 Effort Scaling: skip consumer analysis for B2B/Industrial products
     target_market = state.get("input_data", {}).get("target_market", "").lower()
     if "b2b" in target_market or "industrial" in target_market:
@@ -279,21 +284,21 @@ def calculate_material_scores(
 
         scores = {}
         total_score = 0
-        
+
         for dim, analysis_scores in analyses.items():
             if dim not in weights:
                 logger.warning(f"Missing weight for dimension: {dim}")
                 continue
-                
+
             raw_score = analysis_scores.get(key, 0)
             if not isinstance(raw_score, (int, float)):
                 logger.warning(f"Invalid score type for {key} in {dim}: {type(raw_score)}")
                 raw_score = 0
-                
+
             weight = weights[dim]
             normalized = min(max(raw_score, 0), 100)
             weighted = normalized * weight
-            
+
             scores[dim] = {
                 "raw": raw_score,
                 "normalized": round(normalized, 2),
@@ -303,7 +308,7 @@ def calculate_material_scores(
             total_score += weighted
 
         final_score = round(total_score / total_weight, 2) if total_weight > 0 else 0
-        
+
         return {
             "total_score": final_score,
             "scores": scores,
@@ -336,7 +341,7 @@ def calculate_material_scores(
                 }
             }
         }
-        
+
     except Exception as e:
         logger.error(f"Score calculation failed for material {key}: {str(e)}", exc_info=True)
         return {
@@ -357,13 +362,13 @@ async def orchestrate_results(state: AnalysisState) -> Dict:
 
         ANALYSIS_WEIGHTS = {
     "properties": state["input_data"].get("properties_weight", 0.1),
-    "logistics": state["input_data"].get("logistics_weight", 0.1),  
+    "logistics": state["input_data"].get("logistics_weight", 0.1),
     "cost": state["input_data"].get("cost_weight", 0.1),
     "sustainability": state["input_data"].get("sustainability_weight", 0.4),
     "consumer": state["input_data"].get("consumer_weight", 0.2)
 }
 
-  
+
         materials = state["material_database"].get("materials", {})
         all_materials = []
         for crit_list in materials.values():
@@ -375,7 +380,7 @@ async def orchestrate_results(state: AnalysisState) -> Dict:
             m["summary"]["material_name"]: m["summary"]["overall_score"] * 10
             for m in state.get("consumer_analysis", {}).get("top_materials", [])
         } if not state.get("consumer_skipped") else {}
-        
+
         logistics_scores = {
             m["summary"]["material_name"]: m["summary"]["overall_score"] * 10
             for m in state["logistics_analysis"].get("top_materials", [])
@@ -453,7 +458,7 @@ async def orchestrate_results(state: AnalysisState) -> Dict:
                     if t.get("summary", {}).get("material_name") == mat_name:
                         sub_summaries[agent_name] = t.get("summary")
                         break
-            
+
             material["subagent_summaries"] = sub_summaries
 
             summary = await orchestrator.generate_executive_summary(
@@ -498,7 +503,7 @@ async def orchestrate_results(state: AnalysisState) -> Dict:
 async def handle_error(state: AnalysisState) -> Dict:
     """Handle errors and generate error reports."""
     logger.error(f"Error handler: {state.get('error', 'Unknown error')}")
-    
+
     try:
         orchestrator = OrchestrationAgent(CURRENT_TIME, CURRENT_USER)
 
@@ -544,12 +549,14 @@ async def handle_error(state: AnalysisState) -> Dict:
         }
 
 from langgraph.constants import Send
+
 from libs.shared.registry import registry
+
 
 def route_phase_1(state: AnalysisState):
     if state.get("error") or not state.get("material_database", {}).get("materials"):
         return ["error_handler"]
-    
+
     active_agents = registry.get_agents_for_phase(1, state.get("input_data", {}))
     # Create Send commands for each active agent
     return [Send(agent, state) for agent in active_agents]
@@ -562,11 +569,11 @@ def check_phase_1_completion(state: AnalysisState):
 def route_phase_2(state: AnalysisState):
     if state.get("error"):
         return ["error_handler"]
-    
+
     active_agents = registry.get_agents_for_phase(2, state.get("input_data", {}))
     if not active_agents:
         return ["orchestrator"]
-    
+
     return [Send(agent, state) for agent in active_agents]
 
 def check_phase_2_completion(state: AnalysisState):
@@ -582,28 +589,28 @@ def create_analysis_graph(checkpointer=None):
     workflow.add_node("input", process_input)
     workflow.add_node("compatibility", analyze_product_compatibility)
     workflow.add_node("material_db", query_material_database)
-    
+
     # Add phase 1 nodes dynamically
     workflow.add_node("properties", analyze_material_properties)
     workflow.add_node("logistics", analyze_logistics)
     workflow.add_node("costs", analyze_costs)
     workflow.add_node("sustainability", analyze_sustainability)
     workflow.add_node("consumer", analyze_consumer_behavior)
-    
+
     # Add phase 2 nodes
-    async def _run_carbon_lca(state): 
+    async def _run_carbon_lca(state):
         from services.carbon_lca.agent import CarbonLcaService
         return await CarbonLcaService().run_carbon_lca(state)
-        
-    async def _run_compliance_doc(state): 
+
+    async def _run_compliance_doc(state):
         from services.compliance_doc.agent import ComplianceDocService
         return await ComplianceDocService().run_compliance_doc(state)
-    
+
     workflow.add_node("carbon_lca", _run_carbon_lca)
     workflow.add_node("compliance_doc", _run_compliance_doc)
-    
+
     workflow.add_node("route_phase_2", lambda s: {})
-    
+
     workflow.add_node("orchestrator", orchestrate_results)
     workflow.add_node("error_handler", handle_error)
 
@@ -617,21 +624,21 @@ def create_analysis_graph(checkpointer=None):
         route_phase_1,
         ["properties", "logistics", "costs", "sustainability", "consumer", "error_handler"]
     )
-    
+
     # Phase 1 fan-in to phase 2
     for node in ["properties", "logistics", "costs", "sustainability", "consumer"]:
         workflow.add_edge(node, "route_phase_2")
-        
+
     workflow.add_conditional_edges(
         "route_phase_2",
         route_phase_2,
         ["carbon_lca", "compliance_doc", "orchestrator", "error_handler"]
     )
-    
+
     # Phase 2 fan-in to orchestrator
     for node in ["carbon_lca", "compliance_doc"]:
         workflow.add_edge(node, "orchestrator")
-        
+
     workflow.add_edge("orchestrator", END)
     workflow.add_edge("error_handler", END)
 
@@ -677,13 +684,13 @@ def print_results(result: Dict[str, Any], thread_id: str):
             comp_obj = review.get("composite_score", {})
             metrics  = comp_obj.get("metrics", {})
             composite = comp_obj.get("composite", "N/A")
-            
+
             strengths    = review.get("strengths", [])
             trade_offs   = review.get("trade_offs", [])
             sci          = review.get("supply_chain_implications", {})
             rec          = review.get("consulting_recommendation", {})
             reg_context  = review.get("regulatory_context", "No regulatory context available.")
-            provenance   = review.get("fact_provenance", [])
+            _provenance   = review.get("fact_provenance", [])
 
             print(f"\n{i}. Material: {name}")
             print("------------------------")
@@ -719,7 +726,7 @@ def print_results(result: Dict[str, Any], thread_id: str):
                 print(f"  • Consumer  : {sci.get('consumer','')}")
 
             if rec:
-                advice = rec.get("advice","")
+                _advice = rec.get("advice","")
                 #uplift = rec.get("sustainability_uplift_percent","N/A")
                 #delta  = rec.get("cost_delta_percent","N/A")
 
@@ -734,7 +741,7 @@ def print_results(result: Dict[str, Any], thread_id: str):
 async def main():
     """Main execution function."""
     thread_id = f"{CURRENT_USER}-{int(datetime.now(timezone.utc).timestamp())}"
-    
+
     # Set up logging
     log_filename = f"analysis_log_{CURRENT_TIME.replace(' ', '_').replace(':', '-')}.log"
     logging.basicConfig(
@@ -781,9 +788,9 @@ if __name__ == "__main__":
     os.makedirs("temp_KB", exist_ok=True)
     os.makedirs("temp_KB/reports", exist_ok=True)
     os.makedirs("logs", exist_ok=True)
-    
+
     # Update current time and user
     CURRENT_TIME = "2025-05-09 21:04:45"  # Updated with provided time
-    
+
     # Run analysis
     asyncio.run(main())

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List, Optional
 
-from libs.shared.schemas.product import ProductCompatibilityResult
 from libs.shared.settings import Settings
 from services.base.agent import BaseAgent
 from services.base.prompt_loader import PromptLoader

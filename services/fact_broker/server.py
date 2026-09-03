@@ -4,27 +4,20 @@ services/fact_broker/server.py
 
 from __future__ import annotations
 
-import asyncio
-import os
 import logging
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict
 
 from mcp.server.fastmcp import FastMCP
-from mcp.server.stdio import stdio_server
-from mcp.server.sse import SseServerTransport
-import uvicorn
-from starlette.applications import Starlette
-from starlette.routing import Route
 
 from libs.shared.settings import get_settings
 from services.fact_broker.cache import FactCache
 from services.fact_broker.circuit_breaker import CircuitBreaker, CircuitOpenError
+from services.fact_broker.sources.alphavantage import AlphaVantageSource
 from services.fact_broker.sources.base import FactResult
+from services.fact_broker.sources.brave import BraveSearchSource
 from services.fact_broker.sources.eurlex import EurlexSource
 from services.fact_broker.sources.openfoodfacts import OpenFoodFactsSource
-from services.fact_broker.sources.alphavantage import AlphaVantageSource
-from services.fact_broker.sources.brave import BraveSearchSource
-
 
 logger = logging.getLogger("fact_broker")
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +66,7 @@ async def _fetch_with_cache_and_circuit(
             cache_hit=False,
             ttl_seconds=ttl_seconds
         )
-        
+
         # 3. Store in cache
         cache.set(tool_name, kwargs, result)
         return result

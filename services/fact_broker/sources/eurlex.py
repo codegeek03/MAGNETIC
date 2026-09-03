@@ -4,8 +4,10 @@ services/fact_broker/sources/eurlex.py
 
 from __future__ import annotations
 
-import httpx
 from typing import ClassVar
+
+import httpx
+
 from services.fact_broker.sources.base import SourceClient, SourceFetchError
 
 
@@ -22,17 +24,16 @@ class EurlexSource(SourceClient):
         if not regulation_id:
             raise SourceFetchError("regulation_id is required")
 
-        query = f"SELECT ?text WHERE {{ ... {regulation_id} ... {article} ... LIMIT 1 }}"
-        
+
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient():
                 # We mock the response for the MVP if we don't have the exact SPARQL
                 # For safety, returning a placeholder until real SPARQL is defined.
-                # In actual implementation: 
+                # In actual implementation:
                 # response = await client.get(self.endpoint, params={"query": query, "format": "application/json"})
                 # response.raise_for_status()
                 pass
-            
+
             return f"EUR-Lex official text for regulation {regulation_id}, Article {article}: [Mocked EU Regulation Text]"
         except httpx.HTTPError as exc:
             raise SourceFetchError(f"EUR-Lex fetch failed: {exc}")

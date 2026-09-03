@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 import httpx
 from bs4 import BeautifulSoup
@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
 def get_waste_materials():
     return {
-        
+
   "states": [
     {
       "name": "Uttar Pradesh",
@@ -264,6 +264,6 @@ def get_waste_materials():
       ]
     }
   ]
-        
+
 
     }

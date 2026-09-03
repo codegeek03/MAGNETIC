@@ -1,12 +1,11 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict, Any, Optional
-from datetime import datetime
-import json
 import logging
-import os
+from datetime import datetime
+from typing import Optional
 
-from libs.shared.tasks import run_analysis_workflow, celery_app
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+from libs.shared.tasks import celery_app, run_analysis_workflow
 
 # Configure simple logging
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +42,7 @@ async def start_analysis(
 ):
     try:
         volume = length * width * height
-        
+
         # Build the input data payload
         input_data = {
             "product_name": product_name,
@@ -65,12 +64,12 @@ async def start_analysis(
                 "volume": volume
             }
         }
-        
+
         # Enqueue the Celery task
         task = run_analysis_workflow.delay(input_data)
-        
+
         return {"task_id": task.id, "status": "processing"}
-        
+
     except Exception as e:
         logger.error(f"Error starting analysis: {e}")
         raise HTTPException(status_code=500, detail=str(e))

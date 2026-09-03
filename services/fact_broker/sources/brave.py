@@ -4,8 +4,10 @@ services/fact_broker/sources/brave.py
 
 from __future__ import annotations
 
-import httpx
 from typing import ClassVar
+
+import httpx
+
 from services.fact_broker.sources.base import SourceClient, SourceFetchError
 
 
@@ -40,7 +42,7 @@ class BraveSearchSource(SourceClient):
                 snippets = []
                 for res in results:
                     snippets.append(f"- {res.get('title')}: {res.get('description')} ({res.get('url')})")
-                
+
                 return "\n".join(snippets)
         except httpx.HTTPError as exc:
             raise SourceFetchError(f"Brave Search fetch failed: {exc}")

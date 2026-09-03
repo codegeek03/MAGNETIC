@@ -4,8 +4,10 @@ services/fact_broker/sources/openfoodfacts.py
 
 from __future__ import annotations
 
-import httpx
 from typing import ClassVar
+
+import httpx
+
 from services.fact_broker.sources.base import SourceClient, SourceFetchError
 
 
@@ -33,12 +35,12 @@ class OpenFoodFactsSource(SourceClient):
                     "tag_contains_1": "contains",
                     "tag_1": country
                 })
-            
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(self.base_url, params=params)
                 response.raise_for_status()
                 data = response.json()
-                
+
                 products = data.get("products", [])
                 materials = set()
                 for p in products:

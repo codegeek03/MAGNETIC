@@ -1,12 +1,14 @@
 import asyncio
-import os
 import logging
+import os
+
+import sentry_sdk
 from celery import Celery
-from main import AnalysisState, create_analysis_graph
 
 # Configure JSON logging and Sentry
 from pythonjsonlogger import jsonlogger
-import sentry_sdk
+
+from main import AnalysisState, create_analysis_graph
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -36,9 +38,9 @@ celery_app.conf.update(
 
 async def _run_graph_async(session_id: str, input_data: dict, current_time: str, current_user: str):
     logger.info(f"Starting async graph execution for session {session_id}")
-    
+
     db_url = os.getenv("DATABASE_URL")
-    
+
     state = AnalysisState(
         input_data=input_data,
         input_status="completed",
@@ -46,13 +48,13 @@ async def _run_graph_async(session_id: str, input_data: dict, current_time: str,
         user_login=current_user,
         current_time=current_time
     )
-    
+
     config = {"configurable": {"thread_id": session_id}}
-    
+
     if db_url:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
         from psycopg_pool import AsyncConnectionPool
-        
+
         async with AsyncConnectionPool(db_url) as pool:
             checkpointer = AsyncPostgresSaver(pool)
             await checkpointer.setup() # Ensure tables exist
@@ -61,7 +63,7 @@ async def _run_graph_async(session_id: str, input_data: dict, current_time: str,
     else:
         app = create_analysis_graph()
         final_state = await app.ainvoke(state, config)
-        
+
     return final_state
 
 @celery_app.task(bind=True, name="run_analysis_workflow")
@@ -71,17 +73,17 @@ def run_analysis_workflow(self, session_id: str, input_data: dict, current_time:
     It blocks inside the worker, but frees up the React UI.
     """
     logger.info(f"Celery task started: session_id={session_id}")
-    
+
     # Run the asyncio event loop within the sync Celery task
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        
+
     result = loop.run_until_complete(
         _run_graph_async(session_id, input_data, current_time, current_user)
     )
-    
+
     logger.info(f"Celery task finished: session_id={session_id}")
     return result

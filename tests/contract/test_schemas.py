@@ -15,27 +15,27 @@ import pytest
 from pydantic import ValidationError
 
 from libs.shared.schemas.analysis import (
+    ConsumerDetail,
     ConsumerMaterial,
     ConsumerMetric,
     ConsumerResult,
-    ConsumerTrend,
-    ConsumerDetail,
     ConsumerSummary,
+    ConsumerTrend,
+    CostDetail,
     CostMaterial,
     CostResult,
-    CostDetail,
     CostSummary,
+    LogisticsDetail,
     LogisticsMaterial,
     LogisticsResult,
-    LogisticsDetail,
     LogisticsSummary,
+    PropertiesDetail,
     PropertiesMaterial,
     PropertiesResult,
-    PropertiesDetail,
     PropertiesSummary,
+    SustainabilityDetail,
     SustainabilityMaterial,
     SustainabilityResult,
-    SustainabilityDetail,
     SustainabilitySummary,
 )
 from libs.shared.schemas.base import AgentMetadata, AnalysisWeights
@@ -74,7 +74,7 @@ class TestSettings:
     def test_now_utc_is_live(self):
         """Two successive calls should differ by at most a few seconds (not frozen)."""
         ts1 = Settings.now_utc()
-        ts2 = Settings.now_utc()
+        Settings.now_utc()
         # They could be the same second, but the key thing is they are not a
         # frozen 2025 string.
         assert ts1 >= "2026-01-01 00:00:00", f"Timestamp looks frozen/old: {ts1!r}"

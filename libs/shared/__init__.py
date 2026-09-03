@@ -7,7 +7,7 @@ Public API re-exported here so callers can do:
 """
 
 from libs.shared import schemas
-from libs.shared.settings import Settings, get_settings
+from libs.shared.settings import get_settings
 
 settings = get_settings()
 

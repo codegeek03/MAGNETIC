@@ -4,9 +4,9 @@ services/fact_broker/circuit_breaker.py
 In-memory circuit breaker for external source calls.
 """
 
-import time
 import logging
-from typing import Any, Callable, TypeVar, Awaitable
+import time
+from typing import Any, Awaitable, Callable, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class CircuitBreaker:
         self.name = name
         self.max_failures = max_failures
         self.cooldown_seconds = cooldown_seconds
-        
+
         self.failures = 0
         self.last_failure_time = 0.0
         self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN

@@ -13,10 +13,9 @@ from __future__ import annotations
 
 from typing import Dict, List, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from libs.shared.schemas.base import AgentMetadata
-
 
 # ── Shared base ──────────────────────────────────────────────────────────────
 
