@@ -9,10 +9,13 @@ recommendations, powered by Gemini with web grounding enabled.
 from __future__ import annotations
 
 import logging
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Type
+from pydantic import BaseModel
 
 from agno.agent import Agent
 from agno.models.google import Gemini
+
+from libs.shared.schemas.report import ExecutiveSummaryReport
 
 from libs.shared.settings import Settings
 from services.base.agent import BaseAgent
@@ -32,6 +35,10 @@ class OrchestratorService(BaseAgent):
     - Temperature is reduced to 0.4 for more focused, factual output.
     - Uses Tavily + PubMed for additional literature search.
     """
+
+    @property
+    def response_model(self) -> Optional[Type[BaseModel]]:
+        return ExecutiveSummaryReport
 
     tool_names: ClassVar[List[str]] = ["fact_broker"]
     prompt_key: ClassVar[str] = "orchestrator"
@@ -62,18 +69,22 @@ class OrchestratorService(BaseAgent):
     def _build_grounded_agent(self) -> Agent:
         """Build the grounded Gemini agent for the orchestrator."""
         tools = self._tool_registry.get_many(self.tool_names)
-        return Agent(
-            model=Gemini(
+        kwargs: Dict[str, Any] = {
+            "model": Gemini(
                 id=self._settings.gemini_model_id,
                 search=True,
                 grounding=True,        # ← key difference
                 temperature=0.4,
             ),
-            tools=tools,
-            description=self.agent_description,
-            instructions=self.agent_instructions,
-            markdown=True,
-        )
+            "tools": tools,
+            "description": self.agent_description,
+            "instructions": self.agent_instructions,
+            "markdown": True,
+        }
+        if self.response_model:
+            kwargs["response_model"] = self.response_model
+            
+        return Agent(**kwargs)
 
     # ── public API ────────────────────────────────────────────────────────────
 

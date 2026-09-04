@@ -8,8 +8,10 @@ resource efficiency, and toxicity.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Type
+from pydantic import BaseModel
 
+from libs.shared.schemas.analysis import SustainabilityResult
 from libs.shared.settings import Settings
 from services.base.agent import BaseAgent
 from services.base.prompt_loader import PromptLoader
@@ -27,6 +29,10 @@ class SustainabilityService(BaseAgent):
       - Resource Efficiency 15%
       - Toxicity           15%
     """
+
+    @property
+    def response_model(self) -> Optional[Type[BaseModel]]:
+        return SustainabilityResult
 
     tool_names: ClassVar[List[str]] = ["fact_broker"]
     prompt_key: ClassVar[str] = "sustainability"

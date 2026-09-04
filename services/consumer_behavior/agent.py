@@ -7,8 +7,10 @@ market trends, and brand alignment for packaging materials.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Type
+from pydantic import BaseModel
 
+from libs.shared.schemas.analysis import ConsumerResult
 from libs.shared.settings import Settings
 from services.base.agent import BaseAgent
 from services.base.prompt_loader import PromptLoader
@@ -28,6 +30,10 @@ class ConsumerBehaviorService(BaseAgent):
 
     Also extracts key market trends relevant to the product category.
     """
+
+    @property
+    def response_model(self) -> Optional[Type[BaseModel]]:
+        return ConsumerResult
 
     tool_names: ClassVar[List[str]] = ["fact_broker"]
     prompt_key: ClassVar[str] = "consumer_behavior"

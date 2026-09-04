@@ -7,8 +7,10 @@ mechanical and barrier properties to identify the top performers.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Type
+from pydantic import BaseModel
 
+from libs.shared.schemas.analysis import PropertiesResult
 from libs.shared.settings import Settings
 from services.base.agent import BaseAgent
 from services.base.prompt_loader import PromptLoader
@@ -22,6 +24,10 @@ class MaterialPropertiesService(BaseAgent):
     Scores: mechanical strength, chemical resistance, thermal stability,
     barrier properties, durability — all equally weighted at 20 %.
     """
+
+    @property
+    def response_model(self) -> Optional[Type[BaseModel]]:
+        return PropertiesResult
 
     tool_names: ClassVar[List[str]] = ["fact_broker"]
     prompt_key: ClassVar[str] = "material_properties"

@@ -19,10 +19,11 @@ import json
 import logging
 import os
 from abc import ABC
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Type
 
 from agno.agent import Agent
 from agno.models.google import Gemini
+from pydantic import BaseModel
 
 from libs.shared.settings import Settings, get_settings
 from services.base.prompt_loader import PromptLoader
@@ -52,6 +53,11 @@ class BaseAgent(ABC):
 
     #: Key into prompts.yaml that holds this service's templates
     prompt_key: ClassVar[str] = ""
+
+    @property
+    def response_model(self) -> Optional[Type[BaseModel]]:
+        """Optional Pydantic model for structured output."""
+        return None
 
     #: Agno Agent description (shown to the LLM as role context)
     agent_description: ClassVar[str] = (
@@ -99,17 +105,21 @@ class BaseAgent(ABC):
     def _build_agent(self) -> Agent:
         """Construct the Agno Agent with tools from the registry."""
         tools = self._tool_registry.get_many(self.tool_names)
-        return Agent(
-            model=Gemini(
+        kwargs: Dict[str, Any] = {
+            "model": Gemini(
                 id=self._settings.gemini_model_id,
                 search=True,
                 grounding=False,
             ),
-            tools=tools,
-            description=self.agent_description,
-            instructions=self.agent_instructions,
-            markdown=True,
-        )
+            "tools": tools,
+            "description": self.agent_description,
+            "instructions": self.agent_instructions,
+            "markdown": True,
+        }
+        if self.response_model:
+            kwargs["response_model"] = self.response_model
+            
+        return Agent(**kwargs)
 
     # ── protected: template methods ───────────────────────────────────────────
 
@@ -117,13 +127,18 @@ class BaseAgent(ABC):
         """Render the user prompt template for this service."""
         return self._prompt_loader.render(self.prompt_key, **kwargs)
 
-    def _parse_response(self, response_text: str) -> Dict[str, Any]:
+    def _parse_response(self, response_content: Any) -> Dict[str, Any]:
         """
-        Strip markdown code fences and parse JSON from the LLM response.
-
-        Subclasses may override this for non-JSON responses.
+        Extract JSON from the LLM response. Uses Pydantic model_dump if a
+        structured response_model was used, otherwise strips markdown code fences.
         """
-        text = response_text.strip()
+        if isinstance(response_content, BaseModel):
+            return response_content.model_dump()
+            
+        if not isinstance(response_content, str):
+            response_content = str(response_content)
+            
+        text = response_content.strip()
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -139,10 +154,10 @@ class BaseAgent(ABC):
             )
             raise ValueError(f"LLM returned invalid JSON: {exc}") from exc
 
-    async def _call_llm(self, prompt: str) -> str:
-        """Call the Agno agent and return raw response text."""
+    async def _call_llm(self, prompt: str) -> Any:
+        """Call the Agno agent and return raw response (string or Pydantic model)."""
         response = await self._agent.arun(prompt)
-        return str(response.content) if response and response.content else ""
+        return response.content if response else ""
 
     def _save_report(self, data: Dict[str, Any], report_type: str) -> str:
         """Persist *data* as JSON under ``reports_dir`` and return the path."""

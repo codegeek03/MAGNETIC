@@ -7,8 +7,10 @@ materials across five cost components.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Type
+from pydantic import BaseModel
 
+from libs.shared.schemas.analysis import CostResult
 from libs.shared.settings import Settings
 from services.base.agent import BaseAgent
 from services.base.prompt_loader import PromptLoader
@@ -26,6 +28,10 @@ class ProductionCostService(BaseAgent):
       - Transport     15%
       - Compliance    15%
     """
+
+    @property
+    def response_model(self) -> Optional[Type[BaseModel]]:
+        return CostResult
 
     tool_names: ClassVar[List[str]] = ["fact_broker", "calculator"]
     prompt_key: ClassVar[str] = "cost"
