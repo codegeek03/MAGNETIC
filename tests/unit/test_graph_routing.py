@@ -5,82 +5,61 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from main import (
-    check_analyses_completion,
+    check_phase_1_completion,
     create_analysis_graph,
-    route_after_material_db,
+    route_phase_1,
 )
 
 
-def test_route_after_material_db_success(sample_material_db_result):
-    """Routing should proceed to run_analyses when materials are found and no error."""
+def test_route_phase_1_success(sample_material_db_result):
+    """Routing should proceed to agent nodes when materials are found and no error."""
     state = {
         "material_database": sample_material_db_result,
         "error": "",
     }
-    decision = route_after_material_db(state)
-    assert decision == "run_analyses"
+    with patch("main.registry.get_agents_for_phase", return_value=["dummy_agent"]):
+        decision = route_phase_1(state)
+        # decision is a list of Send objects
+        assert len(decision) == 1
+        assert decision[0].node == "dummy_agent"
 
 
-def test_route_after_material_db_empty():
-    """Routing should proceed to handle_error when materials dict or list is empty."""
+def test_route_phase_1_empty():
+    """Routing should proceed to error_handler when materials dict or list is empty."""
     state = {
         "material_database": {"materials": {}},
         "error": "",
     }
-    decision = route_after_material_db(state)
-    assert decision == "handle_error"
+    decision = route_phase_1(state)
+    assert decision == ["error_handler"]
 
 
-def test_route_after_material_db_with_error():
-    """Routing should proceed to handle_error when state has an error."""
+def test_route_phase_1_with_error():
+    """Routing should proceed to error_handler when state has an error."""
     state = {
         "material_database": {"materials": {"bio": [{"material_name": "Test"}]}},
         "error": "Database lookup timed out",
     }
-    decision = route_after_material_db(state)
-    assert decision == "handle_error"
+    decision = route_phase_1(state)
+    assert decision == ["error_handler"]
 
 
-def test_check_analyses_completion_all_completed():
-    """Routing should proceed to orchestrate when all five sub-analyses are completed."""
+def test_check_phase_1_completion_success():
+    """Routing should proceed to route_phase_2 when no error exists."""
     state = {
-        "properties_status": "completed",
-        "logistics_status": "completed",
-        "costs_status": "completed",
-        "sustainability_status": "completed",
-        "consumer_status": "completed",
         "error": "",
     }
-    decision = check_analyses_completion(state)
-    assert decision == "orchestrate"
+    decision = check_phase_1_completion(state)
+    assert decision == "route_phase_2"
 
 
-def test_check_analyses_completion_partial_failure():
-    """Routing should proceed to handle_error if any sub-analysis is failed."""
+def test_check_phase_1_completion_with_error():
+    """Routing should proceed to error_handler if error is set."""
     state = {
-        "properties_status": "completed",
-        "logistics_status": "failed",
-        "costs_status": "completed",
-        "sustainability_status": "completed",
-        "consumer_status": "completed",
-        "error": "",
-    }
-    decision = check_analyses_completion(state)
-    assert decision == "handle_error"
-
-
-def test_check_analyses_completion_with_error():
-    """Routing should proceed to handle_error if error is set, even if statuses say completed."""
-    state = {
-        "properties_status": "completed",
-        "logistics_status": "completed",
-        "costs_status": "completed",
-        "sustainability_status": "completed",
-        "consumer_status": "completed",
         "error": "Transient failure occurred",
     }
-    decision = check_analyses_completion(state)
-    assert decision == "handle_error"
+    decision = check_phase_1_completion(state)
+    assert decision == "error_handler"
 
 
 @pytest.mark.asyncio
