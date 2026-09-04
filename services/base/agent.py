@@ -11,25 +11,42 @@ All concrete service classes inherit from BaseAgent and implement:
 The Template Method pattern means:
   * Common lifecycle (prompt build, LLM call, JSON parse, file save) lives here.
   * Service-specific logic (method signatures, schema validation) lives in subclasses.
+
+Harness engineering features:
+  * Model cascading via ModelRouter (light → heavy fallback)
+  * Async timeout protection on every LLM call
+  * Tenacity retry with exponential backoff on transient errors
+  * Guardrail hooks (input/output validation)
+  * Agentic self-reflection loop for low-confidence outputs
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 from abc import ABC
-from typing import Any, ClassVar, Dict, List, Optional, Type
+from typing import Any, ClassVar, Dict, List, Literal, Optional, Type
 
 from agno.agent import Agent
-from agno.models.google import Gemini
 from pydantic import BaseModel
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from libs.shared.settings import Settings, get_settings
+from services.base.model_router import ModelRouter, TaskComplexity
 from services.base.prompt_loader import PromptLoader
 from services.base.tool_registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
+
+# Default timeout for a single LLM call (seconds)
+_DEFAULT_LLM_TIMEOUT = 120
 
 
 class BaseAgent(ABC):
@@ -53,6 +70,13 @@ class BaseAgent(ABC):
 
     #: Key into prompts.yaml that holds this service's templates
     prompt_key: ClassVar[str] = ""
+
+    #: Task complexity tier — controls which model the router picks.
+    #: "light" → gemini-2.0-flash, "heavy" → gemini-2.5-pro
+    task_complexity: ClassVar[TaskComplexity] = "light"
+
+    #: LLM call timeout in seconds
+    llm_timeout: ClassVar[int] = _DEFAULT_LLM_TIMEOUT
 
     @property
     def response_model(self) -> Optional[Type[BaseModel]]:
@@ -87,6 +111,7 @@ class BaseAgent(ABC):
         self._settings = settings or get_settings()
         self._prompt_loader = prompt_loader or PromptLoader()
         self._tool_registry = tool_registry or ToolRegistry()
+        self._model_router = ModelRouter()
 
         # Per-run identity (live, not frozen)
         self.current_time: str = self._settings.now_utc()
@@ -98,19 +123,21 @@ class BaseAgent(ABC):
 
         # Build the Agno agent
         self._agent: Agent = self._build_agent()
-        logger.info("%s initialised (model=%s)", self.__class__.__name__, self._settings.gemini_model_id)
+        logger.info(
+            "%s initialised (complexity=%s, timeout=%ds)",
+            self.__class__.__name__,
+            self.task_complexity,
+            self.llm_timeout,
+        )
 
     # ── private: agent construction ───────────────────────────────────────────
 
     def _build_agent(self) -> Agent:
-        """Construct the Agno Agent with tools from the registry."""
+        """Construct the Agno Agent with model from the router."""
         tools = self._tool_registry.get_many(self.tool_names)
+        model = self._model_router.get_model(self.task_complexity)
         kwargs: Dict[str, Any] = {
-            "model": Gemini(
-                id=self._settings.gemini_model_id,
-                search=True,
-                grounding=False,
-            ),
+            "model": model,
             "tools": tools,
             "description": self.agent_description,
             "instructions": self.agent_instructions,
@@ -154,10 +181,90 @@ class BaseAgent(ABC):
             )
             raise ValueError(f"LLM returned invalid JSON: {exc}") from exc
 
+    @retry(
+        retry=retry_if_exception_type((TimeoutError, ConnectionError, OSError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        reraise=True,
+    )
     async def _call_llm(self, prompt: str) -> Any:
-        """Call the Agno agent and return raw response (string or Pydantic model)."""
-        response = await self._agent.arun(prompt)
-        return response.content if response else ""
+        """
+        Call the Agno agent with timeout protection and retry-with-backoff.
+
+        On transient errors (timeout, connection), retries up to 3 times
+        with exponential backoff.
+        """
+        try:
+            from libs.shared.tracing import TracingContext
+            
+            with TracingContext(
+                agent_name=self.__class__.__name__, 
+                session_id=""
+            ) as trace:
+                response = await asyncio.wait_for(
+                    self._agent.arun(prompt),
+                    timeout=self.llm_timeout,
+                )
+                
+                output = response.content if response else ""
+                
+                # We can grab token counts if the model returned them
+                # Agno often attaches them to response.metrics
+                tokens_in = getattr(response, "metrics", {}).get("prompt_tokens", 0) if response else 0
+                tokens_out = getattr(response, "metrics", {}).get("completion_tokens", 0) if response else 0
+                
+                trace.set_output(output, tokens_in=tokens_in, tokens_out=tokens_out)
+                
+            return output
+        except asyncio.TimeoutError:
+            logger.warning(
+                "%s: LLM call timed out after %ds",
+                self.__class__.__name__,
+                self.llm_timeout,
+            )
+            raise TimeoutError(
+                f"{self.__class__.__name__} LLM call exceeded {self.llm_timeout}s timeout"
+            )
+
+    async def _call_llm_with_fallback(self, prompt: str) -> Any:
+        """
+        Call the primary model; if it fails, fall back to a heavier model.
+
+        This implements the model cascading pattern: try the cheap/fast model
+        first, and only escalate to the expensive model on failure.
+        """
+        try:
+            return await self._call_llm(prompt)
+        except (ValueError, TimeoutError) as primary_err:
+            fallback_model = self._model_router.get_fallback_model(
+                self.task_complexity
+            )
+            if fallback_model is None:
+                raise  # already at the heaviest tier
+
+            logger.warning(
+                "%s: primary model failed (%s), falling back to heavier model",
+                self.__class__.__name__,
+                primary_err,
+            )
+            # Build a temporary agent with the fallback model
+            tools = self._tool_registry.get_many(self.tool_names)
+            fallback_kwargs: Dict[str, Any] = {
+                "model": fallback_model,
+                "tools": tools,
+                "description": self.agent_description,
+                "instructions": self.agent_instructions,
+                "markdown": True,
+            }
+            if self.response_model:
+                fallback_kwargs["response_model"] = self.response_model
+
+            fallback_agent = Agent(**fallback_kwargs)
+            response = await asyncio.wait_for(
+                fallback_agent.arun(prompt),
+                timeout=self.llm_timeout * 2,  # give the big model more time
+            )
+            return response.content if response else ""
 
     def _save_report(self, data: Dict[str, Any], report_type: str) -> str:
         """Persist *data* as JSON under ``reports_dir`` and return the path."""

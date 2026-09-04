@@ -12,6 +12,9 @@ product_compatibility:
       You own: identifying physical/chemical packaging constraints and compatible material types.
       You do NOT determine: material cost, logistics fit, or consumer perception.
     </task_boundaries>
+    <reflection>
+      Before outputting JSON, reflect on your reasoning. Have you verified the material characteristics against factual sources?
+    </reflection>
     <tools>
       Use the `fact_broker` for verifying physical or chemical interactions if needed.
     </tools>

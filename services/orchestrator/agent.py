@@ -12,7 +12,6 @@ import logging
 from typing import Any, ClassVar, Dict, List, Optional, Type
 
 from agno.agent import Agent
-from agno.models.google import Gemini
 from pydantic import BaseModel
 
 from libs.shared.schemas.report import ExecutiveSummaryReport
@@ -29,11 +28,14 @@ class OrchestratorService(BaseAgent):
     Executive summary and consulting recommendation service.
 
     Key differences from other services:
+    - Runs at **heavy** complexity tier (uses the larger model).
     - Runs with **grounding=True** (Gemini web-search grounding) for
       authoritative, citable data.
     - Temperature is reduced to 0.4 for more focused, factual output.
     - Uses Tavily + PubMed for additional literature search.
     """
+
+    task_complexity: ClassVar[str] = "heavy"
 
     @property
     def response_model(self) -> Optional[Type[BaseModel]]:
@@ -68,13 +70,14 @@ class OrchestratorService(BaseAgent):
     def _build_grounded_agent(self) -> Agent:
         """Build the grounded Gemini agent for the orchestrator."""
         tools = self._tool_registry.get_many(self.tool_names)
+        model = self._model_router.get_model(
+            self.task_complexity,
+            search=True,
+            grounding=True,
+            temperature=0.4,
+        )
         kwargs: Dict[str, Any] = {
-            "model": Gemini(
-                id=self._settings.gemini_model_id,
-                search=True,
-                grounding=True,        # ← key difference
-                temperature=0.4,
-            ),
+            "model": model,
             "tools": tools,
             "description": self.agent_description,
             "instructions": self.agent_instructions,

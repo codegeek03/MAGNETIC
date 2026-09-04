@@ -92,6 +92,19 @@ class PromptLoader:
                 f"No prompt found for service key '{service_key}'. "
                 f"Available keys: {available}"
             )
+            
+        # Add RAG context if applicable
+        if "product_name" in kwargs:
+            try:
+                from libs.shared.vector_store import VectorStore
+                vs = VectorStore()
+                results = vs.similarity_search(kwargs["product_name"], top_k=2)
+                context = "\n".join([r["text"] for r in results]) if results else "No specific semantic context found."
+                kwargs["dynamic_context"] = context
+            except Exception as e:
+                logger.debug("Failed to inject RAG context: %s", e)
+                kwargs["dynamic_context"] = "Context unavailable."
+                
         user_template = block.get("user", "")
         return self._env.from_string(user_template).render(**kwargs)
 
@@ -99,6 +112,11 @@ class PromptLoader:
         """Render the *system* prompt template for *service_key*."""
         block = self._raw.get(service_key, {})
         system_template = block.get("system", "")
+        
+        # In case the system prompt needs the RAG context
+        if "product_name" in kwargs and "dynamic_context" not in kwargs:
+             kwargs["dynamic_context"] = "Context rendered in user prompt."
+             
         return self._env.from_string(system_template).render(**kwargs)
 
     def keys(self) -> list[str]:

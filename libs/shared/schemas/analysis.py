@@ -26,6 +26,8 @@ class ScoredMaterial(BaseModel):
     overall_score: float
     """Composite score 0–10 (field name varies per agent; see subclasses)."""
     confidence: Literal["verified", "estimated"]
+    source: str = ""
+    """Provenance citation for the score (e.g., 'EUR-Lex PPWR Art. 6', 'DEFRA 2025')."""
 
 
 # ── Material Properties ───────────────────────────────────────────────────────

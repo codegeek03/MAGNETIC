@@ -59,22 +59,44 @@ class FactCache:
                 cursor.execute("SELECT * FROM facts WHERE key = ?", (key,))
                 row = cursor.fetchone()
 
-                if not row:
-                    return None
-
-                if row["expires_at"] < now:
-                    cursor.execute("DELETE FROM facts WHERE key = ?", (key,))
-                    conn.commit()
-                    return None
-
-                return FactResult(
-                    value=row["value"],
-                    source=row["source"],
-                    fetched_at=row["fetched_at"],
-                    confidence=row["confidence"],
-                    cache_hit=True,
-                    ttl_seconds=row["ttl_seconds"],
-                )
+                if row:
+                    if row["expires_at"] < now:
+                        cursor.execute("DELETE FROM facts WHERE key = ?", (key,))
+                        conn.commit()
+                    else:
+                        return FactResult(
+                            value=row["value"],
+                            source=row["source"],
+                            fetched_at=row["fetched_at"],
+                            confidence=row["confidence"],
+                            cache_hit=True,
+                            ttl_seconds=row["ttl_seconds"],
+                        )
+                
+                # Semantic Cache Fallback
+                # If exact match fails, and there is a "query" param, try VectorStore
+                query = kwargs.get("query")
+                if query and isinstance(query, str):
+                    try:
+                        from libs.shared.vector_store import VectorStore
+                        vs = VectorStore()
+                        # Minimum 85% similarity for a cache hit
+                        results = vs.similarity_search(query, top_k=1, min_similarity=0.85)
+                        if results:
+                            hit = results[0]
+                            return FactResult(
+                                value=hit["text"],
+                                source=f"{hit['source']} (semantic cache)",
+                                fetched_at=hit["metadata"].get("timestamp", str(now)),
+                                confidence="estimated",
+                                cache_hit=True,
+                                ttl_seconds=86400,
+                            )
+                    except Exception as sem_exc:
+                        logger.debug("Semantic cache miss/error: %s", sem_exc)
+                        
+                return None
+                
         except Exception as exc:
             logger.error("FactCache get error: %s", exc)
             return None
