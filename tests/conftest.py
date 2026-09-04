@@ -78,8 +78,10 @@ def sample_properties_result() -> Dict[str, Any]:
     return {
         "top_materials": [
             {
-                "material_name": "PLA-Lined Kraft Paper",
-                "overall_score": 8.0,
+                "summary": {
+                    "material_name": "PLA-Lined Kraft Paper",
+                    "overall_score": 8.0,
+                },
                 "tensile_strength": 45.0,
                 "barrier_properties": {"moisture": "Good", "oxygen": "Moderate"},
             }
@@ -93,8 +95,10 @@ def sample_logistics_result() -> Dict[str, Any]:
     return {
         "top_materials": [
             {
-                "material_name": "PLA-Lined Kraft Paper",
-                "logistics_score": 8.0,
+                "summary": {
+                    "material_name": "PLA-Lined Kraft Paper",
+                    "overall_score": 8.0,
+                },
                 "shipping_efficiency": "High",
             }
         ]
@@ -107,8 +111,10 @@ def sample_cost_result() -> Dict[str, Any]:
     return {
         "top_materials": [
             {
-                "material_name": "PLA-Lined Kraft Paper",
-                "cost_score": 7.5,
+                "summary": {
+                    "material_name": "PLA-Lined Kraft Paper",
+                    "overall_score": 7.5,
+                },
                 "unit_cost_estimate": 0.35,
             }
         ]
@@ -121,8 +127,10 @@ def sample_sustainability_result() -> Dict[str, Any]:
     return {
         "top_materials": [
             {
-                "material_name": "PLA-Lined Kraft Paper",
-                "environmental_score": 9.0,
+                "summary": {
+                    "material_name": "PLA-Lined Kraft Paper",
+                    "overall_score": 9.0,
+                },
                 "carbon_footprint_kg": 0.12,
                 "recyclability": "Compostable",
             }
@@ -136,8 +144,10 @@ def sample_consumer_result() -> Dict[str, Any]:
     return {
         "top_materials": [
             {
-                "material_name": "PLA-Lined Kraft Paper",
-                "overall_consumer_score": 8.5,
+                "summary": {
+                    "material_name": "PLA-Lined Kraft Paper",
+                    "overall_score": 8.5,
+                },
                 "consumer_sentiment": "Positive",
             }
         ]

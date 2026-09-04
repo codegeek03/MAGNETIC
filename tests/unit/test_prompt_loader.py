@@ -35,6 +35,7 @@ FULL_KWARGS = dict(
     location="Mumbai, India",
     criteria_keys=["physical_form", "fragility"],
     schema_json='{"materials_by_criteria": {}}',
+    subagent_summaries={},
 )
 
 
