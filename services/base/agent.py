@@ -118,7 +118,7 @@ class BaseAgent(ABC):
         }
         if self.response_model:
             kwargs["response_model"] = self.response_model
-            
+
         return Agent(**kwargs)
 
     # ── protected: template methods ───────────────────────────────────────────
@@ -134,10 +134,10 @@ class BaseAgent(ABC):
         """
         if isinstance(response_content, BaseModel):
             return response_content.model_dump()
-            
+
         if not isinstance(response_content, str):
             response_content = str(response_content)
-            
+
         text = response_content.strip()
         if text.startswith("```json"):
             text = text[7:]
@@ -150,7 +150,7 @@ class BaseAgent(ABC):
         except json.JSONDecodeError as exc:
             logger.error(
                 "%s: failed to parse LLM JSON response — %s\nRaw:\n%s",
-                self.__class__.__name__, exc, response_text[:500],
+                self.__class__.__name__, exc, response_content[:500],
             )
             raise ValueError(f"LLM returned invalid JSON: {exc}") from exc
 

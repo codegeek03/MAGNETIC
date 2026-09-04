@@ -8,6 +8,7 @@ market trends, and brand alignment for packaging materials.
 from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List, Optional, Type
+
 from pydantic import BaseModel
 
 from libs.shared.schemas.analysis import ConsumerResult

@@ -10,13 +10,12 @@ from __future__ import annotations
 
 import logging
 from typing import Any, ClassVar, Dict, List, Optional, Type
-from pydantic import BaseModel
 
 from agno.agent import Agent
 from agno.models.google import Gemini
+from pydantic import BaseModel
 
 from libs.shared.schemas.report import ExecutiveSummaryReport
-
 from libs.shared.settings import Settings
 from services.base.agent import BaseAgent
 from services.base.prompt_loader import PromptLoader
@@ -83,7 +82,7 @@ class OrchestratorService(BaseAgent):
         }
         if self.response_model:
             kwargs["response_model"] = self.response_model
-            
+
         return Agent(**kwargs)
 
     # ── public API ────────────────────────────────────────────────────────────

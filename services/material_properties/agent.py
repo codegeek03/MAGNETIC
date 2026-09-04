@@ -8,6 +8,7 @@ mechanical and barrier properties to identify the top performers.
 from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List, Optional, Type
+
 from pydantic import BaseModel
 
 from libs.shared.schemas.analysis import PropertiesResult
